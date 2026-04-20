@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receipt</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Dark theme (default) – softer charcoals / off-whites */
+    --bg: #1a1d26;
+    --surface: #21263a;
+    --border: #323855;
+    --accent: #4f9eff;
+    --accent2: #22c55e;
+    --danger: #ff5370;
+    --danger-bright: #ff3355;
+    --text: #dde2f0;
+    --muted: #7a849e;
+    --surface2: #2a3049;
+    --warn: #f0c040;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --theme-icon: '🌙';
+  }
+
+  /* Light theme */
+  [data-theme="light"] {
+    --bg: #f4f5f8;
+    --surface: #ffffff;
+    --border: #d0d5e8;
+    --accent: #2563eb;
+    --accent2: #16a34a;
+    --danger: #dc2626;
+    --danger-bright: #b91c1c;
+    --text: #1e2133;
+    --muted: #5c6480;
+    --surface2: #eef0f8;
+    --warn: #d97706;
+    --theme-icon: '☀️';
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: background 0.3s, color 0.3s;
+  }
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  header h1 { font-family: var(--mono); font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+  header p  { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+
+  /* Theme toggle button */
+  .theme-toggle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--mono);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .theme-toggle .toggle-icon { font-size: 15px; }
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--surface);
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone.compact {
+    padding: 18px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  .upload-zone.compact .upload-icon { font-size: 22px; margin-bottom: 0; display: inline; }
+  .upload-zone.compact h2 { font-size: 14px; margin-bottom: 0; display: inline; }
+  .upload-zone.compact p, .upload-zone.compact .upload-btn { display: none; }
+  .upload-zone.compact .compact-btn {
+    display: inline-block;
+    padding: 6px 16px;
+    background: linear-gradient(135deg, var(--accent), #2d7dd2);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--mono);
+    cursor: pointer;
+  }
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(79,158,255,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--surface2); }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+  .upload-zone h2 { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .upload-zone p  { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+  .upload-btn {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, var(--accent), #2d7dd2);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .upload-btn:hover { opacity: 0.85; }
+  .compact-btn { display: none; }
+
+  /* Instructions section shown before any upload */
+  .instructions {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .instr-step {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .instr-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(79,158,255,0.15);
+    border: 1px solid rgba(79,158,255,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .instr-text h3 { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .instr-text p  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  @media (max-width: 600px) { .instructions { flex-direction: column; } }
+
+  /* Recent Activity section */
+  .recent-section {
+    margin-bottom: 20px;
+  }
+  .recent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .recent-clear {
+    cursor: pointer;
+    color: var(--muted);
+    transition: color 0.2s;
+    font-size: 11px;
+  }
+  .recent-clear:hover { color: var(--danger); }
+  .recent-list { display: flex; flex-direction: column; gap: 4px; }
+  .recent-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .recent-item:hover { border-color: var(--accent); background: var(--surface2); }
+  .recent-item .ri-icon { font-size: 16px; }
+  .recent-item .ri-time { margin-left: auto; color: var(--muted); font-size: 11px; }
+  .recent-empty { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 8px 0; }
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .panel-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .img-container {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    background: var(--bg);
+  }
+  .img-container img { max-width: 100%; max-height: 600px; border-radius: 8px; object-fit: contain; }
+  .fields-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: background 0.3s, border-color 0.3s; }
+  .fields-body { padding: 16px; }
+  .field-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: background 0.15s;
+    animation: fadeSlide 0.4s ease both;
+  }
+  .field-row:hover { background: var(--surface2); }
+  @keyframes fadeSlide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  .field-label { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; padding-top: 1px; line-height: 1.6; }
+  .field-value { font-size: 13px; color: var(--text); line-height: 1.7; word-break: break-word; }
+  .field-value.missing {
+    color: var(--danger-bright);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .field-value.missing::before {
+    content: '✕';
+    font-size: 10px;
+    background: rgba(255,51,85,0.15);
+    border: 1px solid rgba(255,51,85,0.35);
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .field-value.ok { color: var(--accent2); }
+  .section-divider {
+    padding: 8px 12px 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .section-divider:first-child { border-top: none; margin-top: 0; }
+  .loading-wrap { padding: 40px; text-align: center; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .loading-sub  { font-family: var(--mono); font-size: 11px; color: var(--border); margin-top: 6px; }
+  .error-box {
+    margin: 16px;
+    padding: 14px 16px;
+    background: rgba(255,51,85,0.08);
+    border: 1px solid rgba(255,51,85,0.25);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--danger-bright);
+  }
+  .ocr-toggle {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+  }
+  .ocr-toggle:hover { color: var(--accent); }
+  .ocr-box {
+    margin: 0 16px 16px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+  }
+  .ocr-box.show { display: block; }
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    flex: 1;
+    min-width: 120px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  
+  .stat-chip .num { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+  .stat-chip .num.good { color: var(--accent2); }
+  .stat-chip .num.bad  { color: var(--danger); }
+  .stat-chip .lbl { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Verdict bar styles */
+  .verdict-stats {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    margin-top: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    height: 28px;
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .verdict-conf {
+    background: rgba(34,197,94,0.18);
+    color: #22c55e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 14px;
+    height: 100%;
+    border: 1px solid rgba(34,197,94,0.4);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    flex: 1;
+  }
+  .verdict-err {
+    background: rgba(255,51,85,0.15);
+    color: #ff3355;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 14px;
+    height: 100%;
+    border: 1px solid rgba(255,51,85,0.45);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    flex: 1;
+  }
+  .verdict-dot-conf { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+  .verdict-dot-err  { width: 7px; height: 7px; border-radius: 50%; background: #ff3355; flex-shrink: 0; }
+  .verdict-divider-bar {
+    width: 1px;
+    height: 100%;
+    background: var(--border);
+  }
+  .verdict-model-tag {
+    margin-top: 6px;
+    font-family: monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-left">
+      <div>
+        <h1>Receipt Viewer</h1>
+        <p>OCR · Field Extraction</p>
+      </div>
+    </div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+      <span class="toggle-icon" id="themeIcon">🌙</span>
+      <span id="themeLabel">Dark Mode</span>
+    </button>
+  </header>
+
+  <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png">
+    <span class="upload-icon">🧾</span>
+    <h2>Drop a receipt image here</h2>
+    <p>JPG / PNG supported</p>
+    <div class="upload-btn">Choose File</div>
+    <div class="compact-btn">Change File</div>
+  </div>
+
+  <!-- Instructions shown before any upload -->
+  <div class="instructions" id="instructionsSection">
+    <div class="instr-step">
+      <div class="instr-num">1</div>
+      <div class="instr-text">
+        <h3>Take a Photo</h3>
+        <p>Snap or scan your receipt and save it as JPG or PNG.</p>
+      </div>
+    </div>
+    <div class="instr-step">
+      <div class="instr-num">2</div>
+      <div class="instr-text">
+        <h3>Upload It</h3>
+        <p>Click "Choose File" or drag and drop your image above.</p>
+      </div>
+    </div>
+    <div class="instr-step">
+      <div class="instr-num">3</div>
+      <div class="instr-text">
+        <h3>Get Results</h3>
+        <p>We'll extract all fields and verify completeness instantly.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity shown before any upload -->
+  <div class="recent-section" id="recentSection">
+    <div class="recent-header">
+      <span>🕐 Recent Activity</span>
+      <span class="recent-clear" onclick="clearRecent()">Clear all</span>
+    </div>
+    <div class="recent-list" id="recentList">
+      <div class="recent-empty" id="recentEmpty">No recent uploads yet.</div>
+    </div>
+  </div>
+
+  <div class="summary-bar" id="summaryBar" style="display:none"></div>
+
+  <div class="main-grid" id="mainGrid" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        Receipt Image
+      </div>
+      <div class="img-container">
+        <img id="previewImg" src="" alt="receipt">
+      </div>
+    </div>
+    <div class="fields-panel">
+      <div class="panel-header">
+        Extracted Fields
+      </div>
+      <div id="fieldsBody" class="fields-body"></div>
+      <div class="ocr-toggle" id="ocrToggle" style="display:none" onclick="toggleOCR()">▸ Raw OCR text</div>
+      <div class="ocr-box" id="ocrBox"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const API_KEY = "sk-HytrxVrL2v19alxMtEs8BzXfGpzTWX5Uc7x6q4mYR9osAcYl" 
+
+const MFU_TAX_ID = "0994000165178";
+
+var MFU_KEYWORDS = ["mae fah luang", "0994000165178", "333 moo 1", "33 moo 1", "thasud subdistrict"];
+
+
+async function runOCR(file) {
+  var formData = new FormData();
+  formData.append("file", file, file.name);
+  formData.append("model", "typhoon-ocr");
+
+  var response = await fetch("https://api.opentyphoon.ai/v1/ocr", {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + API_KEY },
+    body: formData
+  });
+
+  if (!response.ok) {
+    throw new Error("OCR failed with status " + response.status);
+  }
+
+  var data = await response.json();
+  var rawText = data.results[0].message.choices[0].message.content;
+
+  var cleanText = rawText.replace(/<[^>]*>/g, "");
+  return cleanText;
+}
+
+
+function isMFULine(line) {
+  var lower = line.toLowerCase();
+  for (var i = 0; i < MFU_KEYWORDS.length; i++) {
+    if (lower.indexOf(MFU_KEYWORDS[i]) !== -1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
+function splitIntoZones(text) {
+  var allLines = [];
+  var rawLines = text.split("\n");
+  for (var i = 0; i < rawLines.length; i++) {
+    var trimmed = rawLines[i].trim();
+    if (trimmed !== "") {
+      allLines.push(trimmed);
+    }
+  }
+
+  var billedToWords = ["billed to", "bill to", "received from", "customer details", "customer id", "ship to"];
+
+  var footerWords = ["thank you", "payment method", "payment instruction", "received by", "cashier", "manager", "signature", "finance staff"];
+
+  var billedStart = -1;
+  var footerStart = allLines.length;
+
+  for (var i = 0; i < allLines.length; i++) {
+    var lower = allLines[i].toLowerCase();
+
+    if (billedStart === -1) {
+      for (var j = 0; j < billedToWords.length; j++) {
+        if (lower.indexOf(billedToWords[j]) !== -1) {
+          billedStart = i;
+          break;
+        }
+      }
+    }
+
+    if (i > allLines.length * 0.6) {
+      for (var j = 0; j < footerWords.length; j++) {
+        if (lower.indexOf(footerWords[j]) !== -1) {
+          if (i < footerStart) {
+            footerStart = i;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  var headerLines = [];
+  if (billedStart > 0) {
+    headerLines = allLines.slice(0, billedStart);
+  } else {
+    headerLines = allLines.slice(0, 6);
+  }
+
+  var footerLines = allLines.slice(footerStart);
+
+  var lastLines = allLines.slice(-15);
+
+  return {
+    header: headerLines,
+    footer: footerLines,
+    lastLines: lastLines,
+    all: allLines
+  };
+}
+
+
+function isStoreAddress(line) {
+  if (isMFULine(line)) return false;
+
+  var trimmed = line.trim();
+
+  if (/^receipt\s*(no|num|#)/i.test(trimmed)) return false;
+  if (/^invoice\s*(no|#)/i.test(trimmed)) return false;
+  if (/^bill\s*(id|no)/i.test(trimmed)) return false;
+
+  if (/^(muang\s*,\s*)?chiang\s*rai\s+\d{5}/i.test(trimmed)) return false;
+  if (/^thailand$/i.test(trimmed)) return false;
+
+  if (/^\d+[\/\d]*\s+[A-Za-z]/.test(trimmed)) return true;
+
+  if (/\b(moo\s*\d|road|rd\b|jetyod|kwae|phahon|san khong|sri wiang|ban du|rob wiang|wiang subdistrict)\b/i.test(trimmed)) {
+    if (/\d/.test(trimmed)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+function removeTaxId(line) {
+  var result = line;
+
+  result = result.replace(/[,\s]*tax\s*id[:\s]*[\d\-]*/gi, "");
+
+  result = result.replace(/[,\s]+\d{13}\s*$/, "");
+  result = result.replace(/[,\s]+\d{12}\s*$/, "");
+
+  result = result.replace(/[,\s]+$/, "");
+
+  return result.trim();
+}
+
+
+
+function collectAddressLines(firstLine, allLines, startIndex) {
+
+  var cleanFirst = removeTaxId(firstLine);
+  cleanFirst = cleanFirst.replace(/[,\s]*(receipt\s*(no\.?|#)|invoice\s*(no\.?|#))[:\s]*[\w\/]*/gi, "").trim();
+
+  var parts = [cleanFirst];
+
+  for (var j = startIndex + 1; j < allLines.length && j < startIndex + 5; j++) {
+    var nextLine = allLines[j].trim();
+
+    if (nextLine === "") break;
+
+    if (/^tax\s*id/i.test(nextLine)) break;
+    if (/^(phone|email|website|fax|signature|cashier|manager|thank|note|payment)/i.test(nextLine)) break;
+    if (/^(description|qty|item|amount|unit|total|sub)/i.test(nextLine)) break;
+    if (/^(receipt\s*(no|#)|invoice\s*(no|#)|bill\s*id)/i.test(nextLine)) break;
+    if (isMFULine(nextLine)) break;
+
+    var looksLikeContinuation = /\b5\d{4}\b/.test(nextLine)
+      || /district|subdistrict|muang|wiang|chiang\s*rai|thailand/i.test(nextLine)
+      || /\b(road|rd)\b/i.test(nextLine);
+
+    if (looksLikeContinuation) {
+      parts.push(removeTaxId(nextLine));
+    } else {
+      break;
+    }
+  }
+
+  var fullAddress = parts.join(", ");
+  fullAddress = fullAddress.replace(/,\s*,/g, ",");
+  return fullAddress.trim();
+}
+
+
+function detectStoreName(text) {
+  var zones = splitIntoZones(text);
+
+  var skipWords = [
+    "receipt", "invoice", "tax id", "date", "payment", "bill", "billed",
+    "description", "qty", "unit price", "amount", "quantity", "subtotal",
+    "sub-total", "total", "discount", "bill to", "received by", "received from",
+    "no.", "#", "vat reg"
+  ];
+
+  function isDate(line) {
+    if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(line)) return true;
+    if (/\b(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b/i.test(line)) return true;
+    if (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(line)) return true;
+    if (/^\d{1,2}\s+\w+\s+\d{4}$/.test(line)) return true;
+    return false;
+  }
+
+  for (var i = 0; i < zones.header.length; i++) {
+    var line = zones.header[i];
+    var lower = line.toLowerCase();
+
+    if (isMFULine(line)) continue;
+    if (isDate(line)) continue;
+    if (isStoreAddress(line)) continue;
+    if (/^\d/.test(line)) continue;
+    if (line.length < 4) continue;
+    if (/\d{5,}/.test(line)) continue;
+
+    var hasSkipWord = false;
+    for (var j = 0; j < skipWords.length; j++) {
+      if (lower.indexOf(skipWords[j]) !== -1) {
+        hasSkipWord = true;
+        break;
+      }
+    }
+    if (!hasSkipWord) {
+      return line;
+    }
+  }
+
+  var footerAll = zones.footer.concat(zones.lastLines);
+
+  var seen = {};
+  var uniqueFooter = [];
+  for (var i = 0; i < footerAll.length; i++) {
+    if (!seen[footerAll[i]]) {
+      seen[footerAll[i]] = true;
+      uniqueFooter.push(footerAll[i]);
+    }
+  }
+
+  for (var i = 0; i < uniqueFooter.length; i++) {
+    var line = uniqueFooter[i];
+    var lower = line.toLowerCase();
+
+    if (isMFULine(line)) continue;
+    if (isDate(line)) continue;
+    if (isStoreAddress(line)) continue;
+
+    var hasSkipWord = false;
+    for (var j = 0; j < skipWords.length; j++) {
+      if (lower.indexOf(skipWords[j]) !== -1) {
+        hasSkipWord = true;
+        break;
+      }
+    }
+    if (hasSkipWord) continue;
+
+    var companyWords = ["co.", "ltd", "center", "supply", "service", "hotel", "boutique",
+      "studio", "studies", "bakery", "terrace", "flowers", "science", "office",
+      "design", "connect", "clean", "resort", "cafe", "cafe", "book", "handicraft"];
+
+    for (var j = 0; j < companyWords.length; j++) {
+      if (lower.indexOf(companyWords[j]) !== -1) {
+        return line;
+      }
+    }
+
+    if (/^[A-Z][A-Z\s&\.,\-]{4,}$/.test(line) && !/\d/.test(line)) {
+      return line;
+    }
+  }
+
+  return null;
+}
+
+
+function detectStoreAddress(text) {
+  var zones = splitIntoZones(text);
+  var allLines = text.split("\n").map(function(l) { return l.trim(); }).filter(function(l) { return l !== ""; });
+
+  function isDate(line) {
+    if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(line)) return true;
+    if (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(line)) return true;
+    if (/^\d{1,2}\s+\w+\s+\d{4}$/.test(line)) return true;
+    return false;
+  }
+
+  function findLineIndex(line) {
+    for (var i = 0; i < allLines.length; i++) {
+      if (allLines[i] === line) return i;
+    }
+    return -1;
+  }
+
+  var footerAll = zones.footer.concat(zones.lastLines);
+  var seen = {};
+  var uniqueFooter = [];
+  for (var i = 0; i < footerAll.length; i++) {
+    if (!seen[footerAll[i]]) {
+      seen[footerAll[i]] = true;
+      uniqueFooter.push(footerAll[i]);
+    }
+  }
+
+  for (var i = 0; i < uniqueFooter.length; i++) {
+    var line = uniqueFooter[i];
+    if (isMFULine(line)) continue;
+    if (isDate(line)) continue;
+    if (isStoreAddress(line)) {
+      var idx = findLineIndex(line);
+      return collectAddressLines(line, allLines, idx);
+    }
+  }
+
+  for (var i = 0; i < zones.header.length; i++) {
+    var line = zones.header[i];
+    if (isMFULine(line)) continue;
+    if (isDate(line)) continue;
+    if (isStoreAddress(line)) {
+      var idx = findLineIndex(line);
+      return collectAddressLines(line, allLines, idx);
+    }
+  }
+
+  var allSearch = zones.header.concat(uniqueFooter);
+  for (var i = 0; i < allSearch.length; i++) {
+    var line = allSearch[i];
+    if (isMFULine(line)) continue;
+    if (isDate(line)) continue;
+
+    var stripped = removeTaxId(line);
+    stripped = stripped.replace(/[,\s]*(receipt\s*(no\.?|#)|invoice\s*(no\.?|#))[:\s]*[\w\/]*/gi, "").trim();
+
+    if (isStoreAddress(stripped) && stripped.length > 10) {
+      var idx = findLineIndex(line);
+      return collectAddressLines(stripped, allLines, idx);
+    }
+  }
+
+  return null;
+}
+
+
+function detectStoreTaxId(text) {
+  var zones = splitIntoZones(text);
+
+  var searchZones = [
+    zones.footer.concat(zones.lastLines).join("\n"),
+    zones.header.join("\n"),
+    text
+  ];
+
+  for (var z = 0; z < searchZones.length; z++) {
+    var zoneText = searchZones[z];
+
+    var taxPattern = /tax\s*id[:\s]+([\dX\-]{10,})/gi;
+    var match;
+    while ((match = taxPattern.exec(zoneText)) !== null) {
+      var found = match[1].replace(/[\-\s]/g, "");
+
+      if (found === MFU_TAX_ID) continue;
+      if (found.length < 10) continue;
+      if (/^123456/.test(found)) continue;
+
+      return match[1].trim();
+    }
+
+    var vatPattern = /vat\s*(?:reg\.?\s*)?(?:tin|no\.?)[:\s]+([\dX]{10,})/gi;
+    while ((match = vatPattern.exec(zoneText)) !== null) {
+      var found = match[1].replace(/[\-\s]/g, "");
+      if (found === MFU_TAX_ID) continue;
+      if (found.length < 10) continue;
+      if (/^123456/.test(found)) continue;
+      return match[1].trim();
+    }
+  }
+
+  for (var z = 0; z < searchZones.length; z++) {
+    var matches = searchZones[z].match(/\b\d{13}\b/g);
+    if (matches) {
+      for (var i = 0; i < matches.length; i++) {
+        if (matches[i] !== MFU_TAX_ID) {
+          return matches[i];
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+
+function detectDate(text) {
+
+  function extractDateFrom(str) {
+    var patterns = [
+      /\b\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}\b/i,
+      /\b[A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}\b/i,
+      /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/,
+    ];
+    for (var i = 0; i < patterns.length; i++) {
+      var m = str.match(patterns[i]);
+      if (m) return m[0];
+    }
+    return null;
+  }
+
+  // Strategy 1: DATE: followed by value on same line (e.g. "DATE: 21 January 2025")
+  var dateLabel = text.match(/date\s*[:\s]\s*([^\n]{1,60})/i);
+  if (dateLabel) {
+    var d = extractDateFrom(dateLabel[1]);
+    if (d) return d;
+  }
+
+  // Strategy 2: DATE: is at the END of a line (two-column layout like U6),
+  // value is on the NEXT non-empty line
+  var allLines = text.split("\n").map(function(l) { return l.trim(); });
+  for (var i = 0; i < allLines.length; i++) {
+    // Line ends with DATE: or DATE (possibly with trailing spaces)
+    if (/date\s*:?\s*$/i.test(allLines[i])) {
+      for (var j = i + 1; j < allLines.length && j <= i + 3; j++) {
+        if (allLines[j] === "") continue;
+        var d = extractDateFrom(allLines[j]);
+        if (d) return d;
+        break;
+      }
+    }
+    // Line contains DATE: and a date value anywhere on it
+    if (/date/i.test(allLines[i])) {
+      var d = extractDateFrom(allLines[i]);
+      if (d) return d;
+    }
+  }
+
+  // Strategy 3: standalone DATE: label then value on next lines
+  var textLines = text.split("\n").map(function(l) { return l.trim(); });
+  for (var i = 0; i < textLines.length; i++) {
+    if (/^date[:\s]*$/i.test(textLines[i])) {
+      for (var j = i + 1; j <= i + 3 && j < textLines.length; j++) {
+        if (textLines[j] === "") continue;
+        var d = extractDateFrom(textLines[j]);
+        if (d) return d;
+        break;
+      }
+    }
+  }
+
+  var d = extractDateFrom(text);
+  if (d) return d;
+
+  return null;
+}
+
+
+function detectAmount(text) {
+
+  var allTotalMatches = [];
+  var totalPattern = /(?<![A-Za-z])total[:\s\*]*(\*?[\d,]+\.\d{2}\*?)/gi;
+  var match;
+  while ((match = totalPattern.exec(text)) !== null) {
+    var before = text.slice(Math.max(0, match.index - 20), match.index).toLowerCase();
+    if (before.indexOf("sub") === -1 && before.indexOf("partial") === -1) {
+      allTotalMatches.push(match[1].replace(/\*/g, ""));
+    }
+  }
+  if (allTotalMatches.length > 0) {
+    return allTotalMatches[allTotalMatches.length - 1];
+  }
+
+  var grandMatch = text.match(/grand\s*total[:\s]*([\d,]+\.\d{2})/i);
+  if (grandMatch) return grandMatch[1];
+
+  if (/total\s+amount\s*:/i.test(text)) {
+    var subMatch  = text.match(/sub[-\s]?total\s*[:\s]*([\d,]+\.\d{2})/i);
+    var vatMatch  = text.match(/vat[^:\n]*[:\s]+([\d,]+\.\d{2})/i);
+    var discMatch = text.match(/discount\s*[:\s]*([\d,]+\.\d{2})/i);
+
+    if (subMatch) {
+      var total = parseFloat(subMatch[1].replace(/,/g, ""));
+      if (vatMatch)  total = total + parseFloat(vatMatch[1].replace(/,/g, ""));
+      if (discMatch) total = total - parseFloat(discMatch[1].replace(/,/g, ""));
+      if (total > 0) {
+        return total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      }
+    }
+  }
+
+  var textLines = text.split("\n");
+  var lastSummaryIndex = -1;
+  for (var i = 0; i < textLines.length; i++) {
+    if (/\b(sub[-\s]?total|vat|discount)\b/i.test(textLines[i])) {
+      lastSummaryIndex = i;
+    }
+  }
+
+  if (lastSummaryIndex >= 0) {
+    var summaryLines = textLines.slice(lastSummaryIndex);
+    var candidates = [];
+    for (var i = 0; i < summaryLines.length; i++) {
+      var line = summaryLines[i];
+      if (/\b(discount|vat)\b/i.test(line) && !/\btotal\b/i.test(line)) continue;
+      var nums = line.match(/[\d,]+\.\d{2}/g);
+      if (nums) {
+        for (var j = 0; j < nums.length; j++) {
+          candidates.push(nums[j]);
+        }
+      }
+    }
+    if (candidates.length > 0) {
+      return candidates[candidates.length - 1];
+    }
+  }
+
+  return null;
+}
+
+
+
+function detectAmountWords(text) {
+  var m = text.match(/\(([A-Za-z\s\-]+baht\s+only)\)/i);
+  if (m && m[1].length > 8) return m[1].trim();
+
+  m = text.match(/\(([A-Za-z\s\-]+baht\s+and\s+[a-z\-]+\s+satang)\)/i);
+  if (m && m[1].length > 8) return m[1].trim();
+
+  m = text.match(/amount[:\s]*\(?([A-Za-z\s\-,]+baht(?:\s+and\s+[a-z\-]+\s+satang)?(?:\s+only)?)\)?/i);
+  if (m && m[1].length > 8) return m[1].trim();
+
+  m = text.match(/([A-Z][a-z]+(?:\s+[a-z\-]+){2,}\s+baht(?:\s+only)?)/i);
+  if (m && m[1].length > 8) return m[1].trim();
+
+  return null;
+}
+
+
+
+function detectSignature(text) {
+  if (/\b(cashier|manager|received\s+by|finance\s+staff)\b/i.test(text)) {
+    return "Available";
+  }
+
+  var textLines = text.split("\n").map(function(l) { return l.trim(); }).filter(function(l) { return l !== ""; });
+  var total = textLines.length;
+
+  for (var i = 0; i < total; i++) {
+    if (/\bsignature\b/i.test(textLines[i])) {
+      if (i >= total * 0.5) {
+        return "Available";
+      }
+    }
+  }
+
+  return null;
+}
+
+
+
+function detectMFUName(text) {
+  var match = text.match(/Mae\s*Fah\s*Luang\s*University/i);
+  if (match) return match[0];
+  return null;
+}
+
+
+
+function detectMFUAddress(text) {
+  // Match "333 Moo 1" or OCR variants like "33 Moo 1"
+  var mfuAddrMatch = text.match(/3{2,3}\s*moo\s*1/i);
+  if (!mfuAddrMatch) return null;
+  var startIndex = text.toLowerCase().indexOf(mfuAddrMatch[0].toLowerCase());
+  if (startIndex === -1) return null;
+
+  var chunk = text.slice(startIndex, startIndex + 300);
+  var chunkLines = chunk.split("\n").map(function(l) { return l.trim(); }).filter(function(l) { return l !== ""; });
+
+  var addressParts = [];
+  for (var i = 0; i < chunkLines.length; i++) {
+    var line = chunkLines[i];
+
+    if (/^tax\s*id/i.test(line)) break;
+    if (/^(description|qty|item|amount|unit|bill\s*id|receipt\s*no|customer\s*id)/i.test(line)) break;
+
+    addressParts.push(line);
+
+    if (addressParts.length >= 5) break;
+
+    if (/\d{5}/.test(line)) {
+      var nextIndex = i + 1;
+      if (nextIndex < chunkLines.length && /^thailand$/i.test(chunkLines[nextIndex])) {
+        addressParts.push(chunkLines[nextIndex]);
+      }
+      break;
+    }
+  }
+
+  if (addressParts.length === 0) return null;
+
+  var result = addressParts.join(", ").replace(/,\s*,/g, ",").trim();
+  return result.slice(0, 200);
+}
+
+
+
+function detectMFUTaxId(text) {
+  if (text.indexOf("0994000165178") !== -1) {
+    return "0994000165178";
+  }
+  return null;
+}
+
+
+
+async function tryClaudeVisionFallback(file) {
+  var base64Image = await new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function() {
+      var base64 = reader.result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = function() { reject(new Error("Could not read image")); };
+    reader.readAsDataURL(file);
+  });
+
+  var imageType = file.type || "image/jpeg";
+
+  var requestBody = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 300,
+    messages: [{
+      role: "user",
+      content: [
+        {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: imageType,
+            data: base64Image
+          }
+        },
+        {
+          type: "text",
+          text: "Look at this receipt image. Find the store or vendor information (NOT the customer Mae Fah Luang University). Return only a JSON object with these fields: {\"storeName\": \"...\", \"storeAddress\": \"...\", \"storeTaxId\": \"...\"}. Use null if a field is not found."
+        }
+      ]
+    }]
+  };
+
+  var response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    throw new Error("Vision API failed: " + response.status);
+  }
+
+  var data = await response.json();
+  var responseText = data.content[0].text.trim();
+
+  responseText = responseText.replace(/```json|```/g, "").trim();
+
+  return JSON.parse(responseText);
+}
+
+
+
+function buildFieldRow(label, value, delayMs, isOcrMiss) {
+  var isMissing = !value;
+  var cssClass;
+  var displayText;
+
+  if (!isMissing) {
+    cssClass = "ok";
+    displayText = value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  } else {
+    cssClass = "missing";
+    displayText = "Missing";
+  }
+
+  return '<div class="field-row" style="animation-delay:' + delayMs + 'ms">'
+    + '<div class="field-label">' + label + '</div>'
+    + '<div class="field-value ' + cssClass + '">' + displayText + '</div>'
+    + '</div>';
+}
+
+
+
+function buildResultsHTML(fields, ocrText) {
+  var html = "";
+
+  html += '<div class="section-divider">MFU</div>';
+  html += buildFieldRow("MFU Name",    fields.mfuName,    0,   false);
+  html += buildFieldRow("MFU Address", fields.mfuAddress, 60,  false);
+  html += buildFieldRow("MFU Tax ID",  fields.mfuTaxId,   120, false);
+
+  html += '<div class="section-divider">Vendor</div>';
+  html += buildFieldRow("Store Name",    fields.storeName,    0,   false);
+  html += buildFieldRow("Store Address", fields.storeAddress, 60,  false);
+  html += buildFieldRow("Store Tax ID",  fields.storeTaxId,   120, false);
+
+  html += '<div class="section-divider">Transaction</div>';
+  html += buildFieldRow("Date",            fields.date,        0,   false);
+  html += buildFieldRow("Amount",          fields.amount,      60,  false);
+  html += buildFieldRow("Amount in Words", fields.amountWords, 120, false);
+  html += buildFieldRow("Signature",       fields.signature,   180, false);
+
+  return html;
+}
+
+
+
+function showSummary(fields) {
+  var allValues = Object.values(fields);
+  var foundCount = 0;
+  for (var i = 0; i < allValues.length; i++) {
+    if (allValues[i]) foundCount++;
+  }
+  var missingCount = allValues.length - foundCount;
+  var percent = Math.round((foundCount / allValues.length) * 100);
+
+  var missingColor = missingCount > 0 ? "bad" : "good";
+
+  document.getElementById("summaryBar").innerHTML =
+    '<div class="stat-chip"><div class="num good">' + foundCount + '</div><div class="lbl">Fields Found</div></div>' +
+    '<div class="stat-chip"><div class="num ' + missingColor + '">' + missingCount + '</div><div class="lbl">Missing</div></div>' +
+    '<div class="stat-chip"><div class="num" style="color:var(--warn)">' + percent + '%</div><div class="lbl">Completeness</div></div>';
+
+  document.getElementById("summaryBar").style.display = "flex";
+}
+
+
+
+function toggleOCR() {
+  var box = document.getElementById("ocrBox");
+  var btn = document.getElementById("ocrToggle");
+  box.classList.toggle("show");
+  if (box.classList.contains("show")) {
+    btn.textContent = "▾ Hide OCR text";
+  } else {
+    btn.textContent = "▸ Raw OCR text";
+  }
+}
+
+
+
+async function processFile(file) {
+  // Compact the dropzone, hide instructions + recent activity
+  document.getElementById("dropZone").classList.add("compact");
+  document.getElementById("instructionsSection").style.display = "none";
+  document.getElementById("recentSection").style.display = "none";
+
+  // Add to recent activity
+  addToRecent(file.name);
+
+  document.getElementById("mainGrid").style.display = "grid";
+  document.getElementById("summaryBar").style.display = "none";
+  document.getElementById("previewImg").src = URL.createObjectURL(file);
+  document.getElementById("ocrToggle").style.display = "none";
+  document.getElementById("ocrBox").classList.remove("show");
+
+  document.getElementById("fieldsBody").innerHTML =
+    '<div class="loading-wrap">' +
+    '<div class="spinner"></div>' +
+    '<div class="loading-text">Running OCR...</div>' +
+    '<div class="loading-sub">Contacting Typhoon OCR API</div>' +
+    '</div>';
+
+  try {
+    var ocrText = await runOCR(file);
+
+    var fields = {
+      storeName:    detectStoreName(ocrText),
+      storeAddress: detectStoreAddress(ocrText),
+      storeTaxId:   detectStoreTaxId(ocrText),
+      date:         detectDate(ocrText),
+      amount:       detectAmount(ocrText),
+      amountWords:  detectAmountWords(ocrText),
+      signature:    detectSignature(ocrText),
+      mfuName:      detectMFUName(ocrText),
+      mfuAddress:   detectMFUAddress(ocrText),
+      mfuTaxId:     detectMFUTaxId(ocrText)
+    };
+
+    var storeAllMissing = !fields.storeName && !fields.storeAddress && !fields.storeTaxId;
+    if (storeAllMissing && ocrText.length > 100) {
+      document.getElementById("fieldsBody").innerHTML =
+        '<div class="loading-wrap">' +
+        '<div class="spinner"></div>' +
+        '<div class="loading-text">OCR missed store info...</div>' +
+        '<div class="loading-sub">Using Claude Vision as backup</div>' +
+        '</div>';
+
+      try {
+        var visionResult = await tryClaudeVisionFallback(file);
+        if (visionResult.storeName)    fields.storeName    = visionResult.storeName;
+        if (visionResult.storeAddress) fields.storeAddress = visionResult.storeAddress;
+        if (visionResult.storeTaxId)   fields.storeTaxId   = visionResult.storeTaxId;
+      } catch (visionError) {
+        console.log("Vision fallback failed: " + visionError.message);
+      }
+    }
+
+    var features = {
+      has_store_name:    fields.storeName    ? 1 : 0,
+      has_store_address: fields.storeAddress ? 1 : 0,
+      has_store_tax_id:  fields.storeTaxId   ? 1 : 0,
+      has_date:          fields.date         ? 1 : 0,
+      has_amount:        fields.amount       ? 1 : 0,
+      has_amount_words:  fields.amountWords  ? 1 : 0,
+      has_signature:     fields.signature    ? 1 : 0,
+      has_mfu_name:      fields.mfuName      ? 1 : 0,
+      has_mfu_address:   fields.mfuAddress   ? 1 : 0,
+      has_mfu_tax_id:    fields.mfuTaxId     ? 1 : 0
+    };
+
+    var verdictHTML = "";
+    try {
+      var modelResponse = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(features)
+      });
+      var verdict = await modelResponse.json();
+      // Hard override: model can only say Complete if ALL fields are actually detected
+      var anyMissing = !fields.storeName || !fields.storeAddress || !fields.storeTaxId ||
+                       !fields.date || !fields.amount || !fields.amountWords ||
+                       !fields.signature || !fields.mfuName || !fields.mfuAddress || !fields.mfuTaxId;
+      var isComplete = (verdict.result === "Complete") && !anyMissing;
+      var vColor = isComplete ? "#22c55e" : "#ff3355";
+
+      var confPct  = parseFloat(verdict.confidence).toFixed(1);
+      var errorPct = (100 - parseFloat(confPct)).toFixed(1);
+
+      verdictHTML =
+        '<div style="padding:14px 16px; margin-bottom:12px;' +
+        'background:' + (isComplete ? 'rgba(34,197,94,0.1)' : 'rgba(255,51,85,0.1)') + ';' +
+        'border:1px solid ' + vColor + '; border-radius:10px; text-align:center;">' +
+
+        // Result label
+        '<div style="font-size:20px; font-weight:700; color:' + vColor + '; font-family:monospace; margin-bottom:10px;">' +
+        (isComplete ? '✔ COMPLETE' : '✘ INCOMPLETE') +
+        '</div>' +
+
+        // Confidence / Error pill bar
+        '<div style="display:flex; border-radius:8px; overflow:hidden; height:30px; font-family:monospace; font-size:12px; font-weight:600;">' +
+
+        '<div style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;' +
+        'background:rgba(34,197,94,0.18); border:1px solid rgba(34,197,94,0.4); border-right:none; border-radius:8px 0 0 8px;">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span>' +
+        '<span style="color:#22c55e;">Confidence&nbsp;' + confPct + '%</span>' +
+        '</div>' +
+
+        '<div style="width:1px; background:var(--border);"></div>' +
+
+        '<div style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;' +
+        'background:rgba(255,51,85,0.13); border:1px solid rgba(255,51,85,0.45); border-left:none; border-radius:0 8px 8px 0;">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:#ff3355;display:inline-block;"></span>' +
+        '<span style="color:#ff3355;">Error&nbsp;' + errorPct + '%</span>' +
+        '</div>' +
+
+        '</div>' +
+
+        // Model tag
+        '<div style="margin-top:7px; font-family:monospace; font-size:10px; color:var(--muted); letter-spacing:0.06em;">LOGISTIC REGRESSION</div>' +
+
+        '</div>';
+
+    } catch (modelErr) {
+      console.log("Model server not reachable:", modelErr.message);
+      verdictHTML =
+        '<div style="padding:10px 14px; margin-bottom:12px;' +
+        'background:rgba(255,200,0,0.08); border:1px solid rgba(255,200,0,0.3);' +
+        'border-radius:8px; font-family:monospace; font-size:11px; color:#f0c040;">' +
+        'Model server not running — showing fields only. Start server.py to enable prediction.' +
+        '</div>';
+    }
+
+    document.getElementById("fieldsBody").innerHTML = verdictHTML + buildResultsHTML(fields, ocrText);
+    showSummary(fields);
+    document.getElementById("ocrBox").textContent = ocrText;
+    document.getElementById("ocrToggle").style.display = "flex";
+
+  } catch (err) {
+    document.getElementById("fieldsBody").innerHTML =
+      '<div class="error-box"> ' + err.message + '</div>';
+  }
+}
+
+
+
+// ─── Theme Toggle ─────────────────────────────────────────────────────────────
+function toggleTheme() {
+  var isDark = document.documentElement.getAttribute("data-theme") !== "light";
+  if (isDark) {
+    document.documentElement.setAttribute("data-theme", "light");
+    document.getElementById("themeIcon").textContent = "☀️";
+    document.getElementById("themeLabel").textContent = "Light Mode";
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+    document.getElementById("themeIcon").textContent = "🌙";
+    document.getElementById("themeLabel").textContent = "Dark Mode";
+  }
+}
+
+// ─── Recent Activity (localStorage-backed) ────────────────────────────────────
+var RECENT_KEY = "receipt_viewer_recent";
+
+function loadRecent() {
+  try {
+    var raw = localStorage.getItem(RECENT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function saveRecent(items) {
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(items)); } catch (e) {}
+}
+
+function addToRecent(filename) {
+  var items = loadRecent();
+  var now = Date.now();
+  // Remove duplicate name if already present
+  items = items.filter(function(i) { return i.name !== filename; });
+  items.unshift({ name: filename, time: now });
+  if (items.length > 8) items = items.slice(0, 8);
+  saveRecent(items);
+  renderRecent();
+}
+
+function clearRecent() {
+  saveRecent([]);
+  renderRecent();
+}
+
+function timeAgo(ts) {
+  var diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return diff + "s ago";
+  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+  return Math.floor(diff / 86400) + "d ago";
+}
+
+function renderRecent() {
+  var items = loadRecent();
+  var list = document.getElementById("recentList");
+  if (!list) return;
+  if (items.length === 0) {
+    list.innerHTML = '<div class="recent-empty">No recent uploads yet.</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(item) {
+    return '<div class="recent-item"><span class="ri-icon">🧾</span><span>' +
+           item.name + '</span><span class="ri-time">' + timeAgo(item.time) + '</span></div>';
+  }).join("");
+}
+
+// Render on page load so returning users see their history
+renderRecent();
+
+document.getElementById("fileInput").addEventListener("change", function(e) {
+  var file = e.target.files[0];
+  if (file) {
+    processFile(file);
+  }
+});
+
+
+var dropZone = document.getElementById("dropZone");
+
+dropZone.addEventListener("dragover", function(e) {
+  e.preventDefault();
+  dropZone.classList.add("drag");
+});
+
+dropZone.addEventListener("dragleave", function() {
+  dropZone.classList.remove("drag");
+});
+
+dropZone.addEventListener("drop", function(e) {
+  e.preventDefault();
+  dropZone.classList.remove("drag");
+  var file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) {
+    processFile(file);
+  }
+});
+
+</script>
+</body>
+</html>

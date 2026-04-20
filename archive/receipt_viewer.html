@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receipt Viewer — MFU</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1f2537;
+    --border: #2a3147;
+    --accent: #4f9eff;
+    --accent2: #00d4aa;
+    --danger: #ff4d6a;
+    --warn: #ffb020;
+    --text: #e8eaf0;
+    --muted: #6b7494;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 14px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  header h1 { font-family: var(--mono); font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+  header p  { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+  .badge {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(79,158,255,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: #1a2035; }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+  .upload-zone h2 { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .upload-zone p  { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+  .upload-btn {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, var(--accent), #2d7dd2);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .upload-btn:hover { opacity: 0.85; }
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .panel-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .img-container {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    background: #0c0f18;
+  }
+  .img-container img { max-width: 100%; max-height: 600px; border-radius: 8px; object-fit: contain; }
+  .fields-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .fields-body { padding: 16px; }
+  .field-row {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: background 0.15s;
+    animation: fadeSlide 0.4s ease both;
+  }
+  .field-row:hover { background: var(--surface2); }
+  @keyframes fadeSlide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  .field-label { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; padding-top: 1px; line-height: 1.5; }
+  .field-value { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
+  .field-value.missing {
+    color: var(--danger);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .field-value.missing::before {
+    content: '✕';
+    font-size: 10px;
+    background: rgba(255,77,106,0.15);
+    border: 1px solid rgba(255,77,106,0.3);
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .field-value.ok { color: var(--accent2); }
+  .section-divider {
+    padding: 8px 12px 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .section-divider:first-child { border-top: none; margin-top: 0; }
+  .loading-wrap { padding: 40px; text-align: center; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .loading-sub  { font-family: var(--mono); font-size: 11px; color: var(--border); margin-top: 6px; }
+  .error-box {
+    margin: 16px;
+    padding: 14px 16px;
+    background: rgba(255,77,106,0.08);
+    border: 1px solid rgba(255,77,106,0.25);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--danger);
+  }
+  .ocr-toggle {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+  }
+  .ocr-toggle:hover { color: var(--accent); }
+  .ocr-box {
+    margin: 0 16px 16px;
+    padding: 12px;
+    background: #0c0f18;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+  }
+  .ocr-box.show { display: block; }
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    flex: 1;
+    min-width: 120px;
+  }
+  .stat-chip .num { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+  .stat-chip .num.good { color: var(--accent2); }
+  .stat-chip .num.bad  { color: var(--danger); }
+  .stat-chip .lbl { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>Receipt Viewer</h1>
+      <p>OCR · Field Extraction</p>
+    </div>
+  </header>
+
+  <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png">
+    <h2>Drop a receipt image here</h2>
+    <p>JPG / PNG supported</p>
+    <div class="upload-btn">Choose File</div>
+  </div>
+
+  <div class="summary-bar" id="summaryBar" style="display:none"></div>
+
+  <div class="main-grid" id="mainGrid" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        Receipt Image
+      </div>
+      <div class="img-container">
+        <img id="previewImg" src="" alt="receipt">
+      </div>
+    </div>
+    <div class="fields-panel">
+      <div class="panel-header">
+        Extracted Fields
+      </div>
+      <div id="fieldsBody" class="fields-body"></div>
+      <div class="ocr-toggle" id="ocrToggle" style="display:none" onclick="toggleOCR()">▸ Raw OCR text</div>
+      <div class="ocr-box" id="ocrBox"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_KEY = "sk-HytrxVrL2v19alxMtEs8BzXfGpzTWX5Uc7x6q4mYR9osAcYl";
+
+async function runOCR(file) {
+  const fd = new FormData();
+  fd.append("file", file, file.name);
+  fd.append("model", "typhoon-ocr");
+  const r = await fetch("https://api.opentyphoon.ai/v1/ocr", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${API_KEY}` },
+    body: fd
+  });
+  if (!r.ok) throw new Error(`OCR API ${r.status}: ${await r.text()}`);
+  const d = await r.json();
+  return d.results[0].message.choices[0].message.content.replace(/<.*?>/g, "");
+}
+
+const MFU_TAX = "0994000165178";
+
+const MFU_SIGNALS = [
+  "mae fah luang", "0994000165178",
+  "333 moo 1", "thasud subdistrict"
+];
+
+function isMFU(line) {
+  const l = line.toLowerCase();
+  return MFU_SIGNALS.some(s => l.includes(s));
+}
+
+function lines(text) {
+  return text.split("\n").map(s => s.trim()).filter(Boolean);
+}
+
+function getZones(text) {
+  const ls = lines(text);
+
+ 
+  const billedTriggers = [
+    "billed to","bill to","received from","customer details",
+    "customer id","ship to"
+  ];
+
+ 
+  const footerTriggers = [
+    "thank you","payment method","payment instruction",
+    "note:","notes:","received by","cashier","manager",
+    "signature","finance staff"
+  ];
+
+  let billedStart = -1;
+  let footerStart = ls.length;
+
+  for (let i = 0; i < ls.length; i++) {
+    const l = ls[i].toLowerCase();
+    if (billedStart === -1 && billedTriggers.some(t => l.includes(t))) billedStart = i;
+
+    if (i > ls.length * 0.6 && footerTriggers.some(t => l.includes(t))) {
+      footerStart = Math.min(footerStart, i);
+    }
+  }
+
+  const header   = billedStart > 0 ? ls.slice(0, billedStart) : ls.slice(0, Math.min(6, ls.length));
+  const footer   = ls.slice(footerStart);               
+  const footerFallback = ls.slice(-15);                
+
+  return { header, footer, footerFallback, all: ls };
+}
+
+
+function looksLikeStoreAddress(line) {
+  if (isMFU(line)) return false;
+  const l = line.trim();
+
+  // Never match receipt/invoice/bill ID lines
+  if (/^(receipt\s*(no|num|#)|invoice\s*(no|#)|bill\s*(id|no)|no\.|#\s*\d)/i.test(l)) return false;
+  // Never match lines that are ONLY a city + postal code (no street)
+  // e.g. "Chiang Rai 57100, Thailand" or "Muang, Chiang Rai 57100"
+  if (/^(muang[,\s]+)?chiang\s*rai\s+\d{5}(,\s*thailand)?$/i.test(l)) return false;
+  if (/^thailand$/i.test(l)) return false;
+
+  if (/^muang\s*(district)?,?\s*chiang\s*rai/i.test(l) && !/^\d/.test(l)) return false;
+
+ 
+  if (/^\d+[\/\d]*\s+[A-Za-z]/i.test(l)) return true;
+ 
+  if (/\b(moo\s*\d|rd\b|rd\.|road|jetyod|kwae|phahon|san khong|sri wiang|super highway|ban du|rob wiang|rop wiang|wiang subdistrict)\b/i.test(l) && /\d/.test(l)) return true;
+  return false;
+}
+
+function detectStoreName(text) {
+  const { header, footer, footerFallback } = getZones(text);
+
+  const skipWords = [
+    "receipt","invoice","tax id","tax reg","vat reg","vat reg. tin",
+    "date","payment","bill","billed","number","no.","#",
+    "payment receipt","receipt no","description","qty","unit price",
+    "amount","quantity","item","subtotal","sub-total","total","discount",
+    "bill id","bill to","received by","received from"
+  ];
+
+  const looksLikeDate = line => {
+    const l = line.trim();
+    return /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b/i.test(l) ||
+      /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/.test(l) ||
+      /^\d{1,2}\s+\w+\s+\d{4}$/.test(l);
+  };
+
+  for (const line of header) {
+    const low = line.toLowerCase();
+    if (isMFU(line)) continue;
+    if (skipWords.some(w => low.includes(w))) continue;
+    if (looksLikeStoreAddress(line)) continue;
+    if (looksLikeDate(line)) continue;
+    if (/^\d/.test(line)) continue;
+    if (line.length >= 4 && !/\d{5,}/.test(line)) return line;
+  }
+
+  const footerAll = [...new Set([...footer, ...footerFallback])];
+  for (const line of footerAll) {
+    const low = line.toLowerCase();
+    if (isMFU(line)) continue;
+    if (skipWords.some(w => low.includes(w))) continue;
+    if (looksLikeStoreAddress(line)) continue;
+    if (looksLikeDate(line)) continue;
+    if (/\b(co\.|co,|ltd\.?|center|supply|service|hotel|boutique|studio|studies|bakery|terrace|flowers|science|office|design|connect|clean|art\s*&|van service|handicraft|resort|café|cafe|book)\b/i.test(line))
+      return line;
+    if (/^[A-Z][A-Z\s&\.,\-]{4,}$/.test(line) && !/\d/.test(line))
+      return line;
+  }
+
+  return null;
+}
+
+
+
+function stripTaxId(line) {
+  return line
+    .replace(/[,\s]*tax\s*id[:\s]*[\dX\-]*/gi, "")  
+    .replace(/[,\s]+\d{13}\s*$/g, "")                 
+    .replace(/[,\s]+\d{12}\s*$/g, "")                 
+    .replace(/[,\s]+$/g, "")                           
+    .trim();
+}
+
+
+function gatherAddressLines(startLine, allLines, startIdx) {
+
+  const cleanStart = stripTaxId(startLine)
+    .replace(/[,\s]*(receipt\s*(no\.?|#)|invoice\s*(no\.?|#))[:\s]*[\w\/]+/gi, "")
+    .trim();
+  const parts = [cleanStart];
+  for (let j = startIdx + 1; j < Math.min(startIdx + 5, allLines.length); j++) {
+    const next = allLines[j].trim();
+    if (!next) break;
+    if (/^(tax\s*id|phone|email|website|fax|signature|cashier|manager|thank|note|payment)/i.test(next)) break;
+    if (/^(description|qty|item|amount|unit|total|sub)/i.test(next)) break;
+    if (/^(receipt\s*(no|#)|invoice\s*(no|#)|bill\s*id)/i.test(next)) break;
+    if (isMFU(next)) break;
+ 
+    if (/^(receipt\s*(no|num|#)|invoice\s*(no|#)|bill\s*(id|no|num)|\binv\/)/i.test(next)) break;
+   
+    if (/\b5\d{4}\b|district|subdistrict|muang|wiang|chiang\s*rai|thailand|\brd\b|road/i.test(next)) {
+      parts.push(stripTaxId(next));
+    } else {
+      break;
+    }
+  }
+  return parts.join(", ").replace(/,\s*,/g, ",").trim();
+}
+
+function detectStoreAddress(text) {
+  const { header, footer, footerFallback } = getZones(text);
+
+  const isDateLine = line => {
+    const l = line.trim();
+    return /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b/i.test(l) ||
+      /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/.test(l) ||
+      /^\d{1,2}\s+\w+\s+\d{4}$/.test(l);
+  };
+
+  const allLines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+  const findIdx = line => allLines.indexOf(line);
+
+  const footerAll = [...new Set([...footer, ...footerFallback])];
+
+  for (const line of footerAll) {
+    if (isMFU(line)) continue;
+    if (isDateLine(line)) continue;
+    if (looksLikeStoreAddress(line)) {
+      const idx = findIdx(line);
+      return gatherAddressLines(line, allLines, idx);
+    }
+  }
+
+  for (const line of header) {
+    if (isMFU(line)) continue;
+    if (isDateLine(line)) continue;
+    if (looksLikeStoreAddress(line)) {
+      const idx = findIdx(line);
+      return gatherAddressLines(line, allLines, idx);
+    }
+  }
+
+  for (const line of [...header, ...footerAll]) {
+    if (isMFU(line)) continue;
+    if (isDateLine(line)) continue;
+    const stripped = stripTaxId(line)
+      .replace(/[,\s]*(receipt\s*(no\.?|#)|invoice\s*(no\.?|#))[:\s]*[\w\/]+/gi, "")
+      .trim();
+    if (looksLikeStoreAddress(stripped) && stripped.length > 10) {
+      const idx = findIdx(line);
+      return gatherAddressLines(stripped, allLines, idx);
+    }
+  }
+
+  return null;
+}
+
+function detectStoreTaxId(text) {
+  const { header, footer, footerFallback } = getZones(text);
+
+
+  const isVatRegTinLine = line => /vat\s*reg\.?\s*tin[:\s]+[\d\-]+/i.test(line);
+
+  const labelRe = [
+    /(?<!vat reg\.?\s*)tax\s*(?:id|no\.?)[:\s]+([\dX\-]{10,})/gi,
+    /vat\s*(?:reg\.?\s*)?(?:tin|no\.?)[:\s]+([\dX]{10,})/gi,
+  ];
+
+ 
+  const zones = [
+    [...footer, ...footerFallback].join("\n"),
+    header.join("\n"),
+    text
+  ];
+
+  for (const zone of zones) {
+  
+    for (const re of labelRe) {
+      re.lastIndex = 0;
+      let m;
+      while ((m = re.exec(zone)) !== null) {
+        const raw = m[1];
+        const tax = raw.replace(/[\-\s]/g, "");
+        if (tax === MFU_TAX) continue;
+        if (tax.length < 10) continue;
+       
+        if (/^123-456/.test(raw)) continue;
+        return raw.trim();
+      }
+    }
+  }
+
+ 
+  for (const zone of zones) {
+    for (const m of zone.matchAll(/\b(\d{13})\b/g)) {
+      if (m[1] !== MFU_TAX) return m[1];
+    }
+  }
+
+  return null;
+}
+
+// DATE
+function detectDate(text) {
+  const dateRe = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}|[A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[A-Z]{3,}\s+\d{4})\b/i;
+
+  
+  const extractDate = s => {
+    const m = s.match(dateRe);
+    return m ? m[0] : null;
+  };
+
+  
+  const labeledSameLine = text.match(/\bdate[:\s]+([^\n]{1,60})/i);
+  if (labeledSameLine) {
+    const d = extractDate(labeledSameLine[1]);
+    if (d) return d;
+  }
+
+ 
+  const lines_arr = text.split("\n").map(l => l.trim());
+  for (let i = 0; i < lines_arr.length; i++) {
+    if (/^(?:payment\s+)?date[:\s]*$/i.test(lines_arr[i])) {
+     
+      for (let j = i + 1; j <= i + 3 && j < lines_arr.length; j++) {
+        if (!lines_arr[j]) continue;
+        const d = extractDate(lines_arr[j]);
+        if (d) return d;
+        break;
+      }
+    }
+  }
+
+  
+  const inlineLabel = text.match(/date[:\s]{1,5}(\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}|[A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/i);
+  if (inlineLabel) return inlineLabel[1];
+
+  const patterns = [
+    /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\b/,
+    /\b\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}\b/i,
+    /\b[A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}\b/i,
+    /\b\d{1,2}\s+[A-Z]{3,}\s+\d{4}\b/,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[0];
+  }
+  return null;
+}
+
+function detectAmount(text) {
+  const allMatches = [...text.matchAll(/(?<![A-Za-z])total[:\s\*]*(\*?[\d,]+\.\d{2}\*?)/gi)];
+  const valid = allMatches.filter(m => {
+    const before = text.slice(Math.max(0, m.index - 20), m.index).toLowerCase();
+    return !before.includes("sub") && !before.includes("partial");
+  });
+  if (valid.length) {
+    return valid[valid.length - 1][1].replace(/\*/g, "");
+  }
+
+  const gm = text.match(/grand\s*total[:\s]*([\d,]+\.\d{2})/i);
+  if (gm) return gm[1];
+
+  if (/total\s+amount\s*:/i.test(text)) {
+    const sub = text.match(/sub[-\s]?total\s*[:\s]*([\d,]+\.\d{2})/i);
+    const vat = text.match(/vat[^:\n]*[:\s]+([\d,]+\.\d{2})/i);
+    const disc = text.match(/discount\s*[:\s]*([\d,]+\.\d{2})/i);
+    if (sub) {
+      let total = parseFloat(sub[1].replace(/,/g, ""));
+      if (vat)  total += parseFloat(vat[1].replace(/,/g, ""));
+      if (disc) total -= parseFloat(disc[1].replace(/,/g, ""));
+      if (total > 0) return total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+  }
+
+  const summaryTrigger = /\b(sub[-\s]?total|vat|discount)\b/i;
+  const textLines = text.split("\n");
+  let lastSummaryLine = -1;
+  for (let i = 0; i < textLines.length; i++) {
+    if (summaryTrigger.test(textLines[i])) lastSummaryLine = i;
+  }
+  if (lastSummaryLine >= 0) {
+    const summaryBlock = textLines.slice(lastSummaryLine);
+    const candidates = [];
+    for (const line of summaryBlock) {
+      if (/\b(discount|vat)\b/i.test(line) && !/\btotal\b/i.test(line)) continue;
+      const nums = [...line.matchAll(/[\d,]+\.\d{2}/g)];
+      if (nums.length) candidates.push(...nums.map(n => n[0]));
+    }
+    if (candidates.length) return candidates[candidates.length - 1];
+  }
+
+  const all = [...text.matchAll(/[\d,]+\.\d{2}/g)];
+  if (all.length) return all[all.length - 1][0];
+  return null;
+}
+
+function detectAmountWords(text) {
+  const patterns = [
+    /\(([A-Za-z\s\-]+baht\s+and\s+[a-z\-]+\s+satang)\)/i,
+    /\(([A-Za-z\s\-]+baht\s+only)\)/i,
+    /amount[:\s]*\(?([A-Za-z\s\-,]+baht(?:\s+and\s+[a-z\-]+\s+satang)?(?:\s+only)?)\)?/i,
+    /([A-Z][a-z]+(?:\s+[a-z\-]+){2,}\s+baht(?:\s+and\s+[a-z\-]+\s+satang)?(?:\s+only)?)/i,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) {
+      const v = (m[1] || m[0]).trim().replace(/^[\(\s]+|[\)\s]+$/g, "");
+      if (v.length > 8) return v;
+    }
+  }
+  return null;
+}
+
+// ─── SIGNATURE 
+function detectSignature(text) {
+  if (/\b(cashier|manager|received\s+by|finance\s+staff)\b/i.test(text)) return "Available";
+
+  const ls = lines(text);
+  const total = ls.length;
+  for (let i = 0; i < total; i++) {
+    if (!/\bsignature\b/i.test(ls[i])) continue;
+    if (i < total * 0.5) continue;
+    const nearby = ls.slice(i, i + 5).join(" ");
+    if (/[A-Z][a-z]+\s+[A-Z][a-z]+/.test(nearby)) return "Available";
+    return "Available";
+  }
+  return null;
+}
+
+// ─── MFU NAME 
+function detectMFUName(text) {
+  const m = text.match(/Mae\s*Fah\s*Luang\s*University/i);
+  return m ? m[0] : null;
+}
+
+// ─── MFU ADDRESS 
+function detectMFUAddress(text) {
+  const clean = s => s.replace(/\s+/g, " ").trim().slice(0, 200);
+
+  let m = text.match(/333\s+Moo\s+1[,\s]+Thasud[^\n]{0,60}[,\s]+Muang[^\n]{0,40}[,\s]+Chiang\s*Rai\s+\d{5}(?:[,\s]+Thailand)?/i);
+  if (m) return clean(m[0]);
+
+  m = text.match(/333\s+Moo\s+1[^\n]{0,120}Chiang\s*Rai\s+\d{5}/i);
+  if (m) return clean(m[0]);
+
+  const idx = text.toLowerCase().indexOf("333 moo 1");
+  if (idx !== -1) {
+    const chunk = text.slice(idx, idx + 300);
+    const chunkLines = chunk.split("\n").map(l => l.trim()).filter(Boolean);
+    const addrLines = [];
+    for (const l of chunkLines) {
+      if (/^tax\s*id/i.test(l)) break;
+      if (/^(description|qty|item|amount|unit|bill\s*id|receipt\s*no|customer\s*id)/i.test(l)) break;
+      addrLines.push(l);
+      if (addrLines.length >= 5) break;
+      if (/\d{5}/.test(l)) {
+        const nextIdx = chunkLines.indexOf(l) + 1;
+        if (nextIdx < chunkLines.length && /^thailand$/i.test(chunkLines[nextIdx])) {
+          addrLines.push(chunkLines[nextIdx]);
+        }
+        break;
+      }
+    }
+    const result = addrLines.join(", ").replace(/,\s*,/g, ",").trim();
+    if (result.length > 10) return result.slice(0, 200);
+  }
+
+  const idx2 = text.toLowerCase().indexOf("33 moo 1");
+  if (idx2 !== -1) {
+    const chunk = text.slice(idx2, idx2 + 200);
+    return chunk.split(/tax\s*id/i)[0].replace(/\n/g, " ").trim().slice(0, 200);
+  }
+
+  return null;
+}
+
+// ─── MFU TAX ID 
+function detectMFUTaxId(text) {
+  const m = text.match(/\b0994000165178\b/);
+  return m ? m[0] : null;
+}
+
+// ─── UI 
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function fieldRow(label, value, delay = 0, ocrMiss = false) {
+  const missing = !value;
+  const cls = missing ? (ocrMiss ? 'ocr-miss' : 'missing') : 'ok';
+  const display = missing ? (ocrMiss ? 'Not in OCR' : 'Missing') : escHtml(value);
+  return `
+    <div class="field-row" style="animation-delay:${delay}ms">
+      <div class="field-label">${label}</div>
+      <div class="field-value ${cls}">${display}</div>
+    </div>`;
+}
+
+function renderFields(f, ocrText) {
+  let html = "";
+  const storeOcrMiss = !f.storeName && !f.storeAddress && !f.storeTaxId
+    && ocrText && ocrText.length > 100;
+
+  html += `<div class="section-divider">Vendor</div>`;
+  [[`Store Name`, f.storeName],[`Store Address`, f.storeAddress],[`Store Tax ID`, f.storeTaxId]]
+    .forEach(([l,v],i) => html += fieldRow(l, v, i*60, storeOcrMiss));
+
+  
+
+  html += `<div class="section-divider">Transaction</div>`;
+  [[`Date`, f.date],[`Amount`, f.amount],[`Amount in Words`, f.amountWords],[`Signature`, f.signature]]
+    .forEach(([l,v],i) => html += fieldRow(l,v,i*60));
+  html += `<div class="section-divider">Billed To (MFU)</div>`;
+  [[`MFU Name`, f.mfuName],[`MFU Address`, f.mfuAddress],[`MFU Tax ID`, f.mfuTaxId]]
+    .forEach(([l,v],i) => html += fieldRow(l,v,i*60));
+  return html;
+}
+
+function renderSummary(f) {
+  const vals    = Object.values(f);
+  const found   = vals.filter(Boolean).length;
+  const missing = vals.length - found;
+  const pct     = Math.round(found / vals.length * 100);
+  document.getElementById("summaryBar").innerHTML = `
+    <div class="stat-chip"><div class="num good">${found}</div><div class="lbl">Fields Found</div></div>
+    <div class="stat-chip"><div class="num ${missing>0?'bad':'good'}">${missing}</div><div class="lbl">Missing</div></div>
+    <div class="stat-chip"><div class="num" style="color:var(--warn)">${pct}%</div><div class="lbl">Completeness</div></div>`;
+  document.getElementById("summaryBar").style.display = "flex";
+}
+
+function toggleOCR() {
+  const box = document.getElementById("ocrBox");
+  const tog = document.getElementById("ocrToggle");
+  box.classList.toggle("show");
+  tog.textContent = box.classList.contains("show") ? "▾ Hide OCR text" : "▸ Raw OCR text";
+}
+
+// ─── MAIN 
+async function processFile(file) {
+  document.getElementById("mainGrid").style.display = "grid";
+  document.getElementById("summaryBar").style.display = "none";
+  document.getElementById("previewImg").src = URL.createObjectURL(file);
+  document.getElementById("fieldsBody").innerHTML = `
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text">Running OCR…</div>
+      <div class="loading-sub">Contacting Typhoon OCR API</div>
+    </div>`;
+  document.getElementById("ocrToggle").style.display = "none";
+  document.getElementById("ocrBox").classList.remove("show");
+
+  try {
+    const text = await runOCR(file);
+
+    const fields = {
+      storeName:    detectStoreName(text),
+      storeAddress: detectStoreAddress(text),
+      storeTaxId:   detectStoreTaxId(text),
+      date:         detectDate(text),
+      amount:       detectAmount(text),
+      amountWords:  detectAmountWords(text),
+      signature:    detectSignature(text),
+      mfuName:      detectMFUName(text),
+      mfuAddress:   detectMFUAddress(text),
+      mfuTaxId:     detectMFUTaxId(text),
+    };
+
+    document.getElementById("fieldsBody").innerHTML = renderFields(fields, text);
+    renderSummary(fields);
+    document.getElementById("ocrBox").textContent = text;
+    document.getElementById("ocrToggle").style.display = "flex";
+
+  } catch (err) {
+    document.getElementById("fieldsBody").innerHTML =
+      `<div class="error-box">⚠ ${err.message}</div>`;
+  }
+}
+
+document.getElementById("fileInput").addEventListener("change", e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+const dz = document.getElementById("dropZone");
+dz.addEventListener("dragover",  e => { e.preventDefault(); dz.classList.add("drag"); });
+dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+dz.addEventListener("drop", e => {
+  e.preventDefault();
+  dz.classList.remove("drag");
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith("image/")) processFile(f);
+});
+</script>
+</body>
+</html>

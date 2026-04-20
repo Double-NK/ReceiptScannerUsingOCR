@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thai Receipt Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1d26;
+    --surface: #21263a;
+    --border: #323855;
+    --accent: #4f9eff;
+    --accent2: #22c55e;
+    --danger: #ff5370;
+    --danger-bright: #ff3355;
+    --text: #dde2f0;
+    --muted: #7a849e;
+    --surface2: #2a3049;
+    --warn: #f0c040;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Sarabun', 'IBM Plex Sans', sans-serif;
+    --theme-icon: '🌙';
+  }
+  [data-theme="light"] {
+    --bg: #f4f5f8;
+    --surface: #ffffff;
+    --border: #d0d5e8;
+    --accent: #2563eb;
+    --accent2: #16a34a;
+    --danger: #dc2626;
+    --danger-bright: #b91c1c;
+    --text: #1e2133;
+    --muted: #5c6480;
+    --surface2: #eef0f8;
+    --warn: #d97706;
+    --theme-icon: '☀️';
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+  .container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ── Header ── */
+  header {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid var(--border);
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  header h1 { font-family: var(--mono); font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+  header p  { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+  .theme-toggle {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; cursor: pointer; font-size: 13px; color: var(--muted);
+    font-family: var(--mono); display: flex; align-items: center; gap: 6px;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Upload zone ── */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 16px; padding: 48px 24px;
+    text-align: center; cursor: pointer; transition: all 0.3s;
+    background: var(--surface); margin-bottom: 32px; position: relative; overflow: hidden;
+  }
+  .upload-zone.compact {
+    padding: 18px 24px; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+  }
+  .upload-zone.compact .upload-icon { font-size: 22px; margin-bottom: 0; display: inline; }
+  .upload-zone.compact h2 { font-size: 14px; margin-bottom: 0; display: inline; }
+  .upload-zone.compact p, .upload-zone.compact .upload-btn { display: none; }
+  .upload-zone.compact .compact-btn {
+    display: inline-block; padding: 6px 16px;
+    background: linear-gradient(135deg, var(--accent), #2d7dd2);
+    color: #fff; border-radius: 6px; font-size: 12px; font-weight: 500;
+    font-family: var(--mono); cursor: pointer;
+  }
+  .upload-zone::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(79,158,255,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--surface2); }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+  .upload-zone h2 { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .upload-zone p  { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+  .upload-btn {
+    display: inline-block; margin-top: 16px; padding: 10px 24px;
+    background: linear-gradient(135deg, var(--accent), #2d7dd2);
+    color: #fff; border-radius: 8px; font-size: 13px; font-weight: 500;
+    font-family: var(--mono); cursor: pointer; transition: opacity 0.2s;
+  }
+  .upload-btn:hover { opacity: 0.85; }
+  .compact-btn { display: none; }
+
+  /* ── Instructions ── */
+  .instructions { display: flex; gap: 16px; margin-bottom: 32px; }
+  .instr-step {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; display: flex; gap: 12px;
+    align-items: flex-start; transition: background 0.3s, border-color 0.3s;
+  }
+  .instr-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(79,158,255,0.15); border: 1px solid rgba(79,158,255,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--accent); flex-shrink: 0;
+  }
+  .instr-text h3 { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .instr-text p  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  @media (max-width: 600px) { .instructions { flex-direction: column; } }
+
+  /* ── Recent Activity ── */
+  .recent-section { margin-bottom: 20px; }
+  .recent-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; font-family: var(--mono); font-size: 11px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .recent-clear { cursor: pointer; color: var(--muted); transition: color 0.2s; font-size: 11px; }
+  .recent-clear:hover { color: var(--danger); }
+  .recent-list { display: flex; flex-direction: column; gap: 4px; }
+  .recent-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 12px; color: var(--text);
+    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  }
+  .recent-item:hover { border-color: var(--accent); background: var(--surface2); }
+  .recent-item .ri-time { margin-left: auto; color: var(--muted); font-size: 11px; }
+  .recent-empty { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 8px 0; }
+
+  /* ── Summary chips ── */
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat-chip {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 16px; flex: 1; min-width: 120px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .stat-chip .num { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+  .stat-chip .num.good { color: var(--accent2); }
+  .stat-chip .num.bad  { color: var(--danger); }
+  .stat-chip .lbl { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* ── Main grid ── */
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: background 0.3s, border-color 0.3s; }
+  .panel-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .panel-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .img-container {
+    padding: 16px; display: flex; align-items: center; justify-content: center;
+    min-height: 300px; background: var(--bg);
+  }
+  .img-container img { max-width: 100%; max-height: 600px; border-radius: 8px; object-fit: contain; }
+
+  /* ── Fields panel ── */
+  .fields-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: background 0.3s, border-color 0.3s; }
+  .fields-body { padding: 16px; }
+  .field-row {
+    display: grid; grid-template-columns: 150px 1fr; gap: 8px;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 4px;
+    transition: background 0.15s;
+    animation: fadeSlide 0.4s ease both;
+  }
+  .field-row:hover { background: var(--surface2); }
+  @keyframes fadeSlide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  .field-label {
+    font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.07em; padding-top: 1px; line-height: 1.6;
+  }
+  .field-value { font-size: 13px; color: var(--text); line-height: 1.7; word-break: break-word; font-family: var(--sans); }
+  .field-value.missing {
+    color: var(--danger-bright); font-family: var(--mono); font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .field-value.missing::before {
+    content: '✕'; font-size: 10px; background: rgba(255,51,85,0.15);
+    border: 1px solid rgba(255,51,85,0.35); width: 18px; height: 18px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .field-value.ok { color: var(--accent2); }
+
+  .section-divider {
+    padding: 8px 12px 4px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+    color: var(--accent); text-transform: uppercase; letter-spacing: 0.12em;
+    border-top: 1px solid var(--border); margin-top: 8px;
+  }
+  .section-divider:first-child { border-top: none; margin-top: 0; }
+
+  /* ── Loading / Error ── */
+  .loading-wrap { padding: 40px; text-align: center; }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .loading-sub  { font-family: var(--mono); font-size: 11px; color: var(--border); margin-top: 6px; }
+  .error-box {
+    margin: 16px; padding: 14px 16px; background: rgba(255,51,85,0.08);
+    border: 1px solid rgba(255,51,85,0.25); border-radius: 8px;
+    font-family: var(--mono); font-size: 12px; color: var(--danger-bright);
+  }
+
+  /* ── OCR toggle ── */
+  .ocr-toggle {
+    padding: 12px 16px; border-top: 1px solid var(--border);
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    cursor: pointer; display: flex; align-items: center; gap: 8px; transition: color 0.2s;
+  }
+  .ocr-toggle:hover { color: var(--accent); }
+  .ocr-box {
+    margin: 0 16px 16px; padding: 12px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    white-space: pre-wrap; max-height: 200px; overflow-y: auto; display: none;
+  }
+  .ocr-box.show { display: block; }
+
+  /* ── MFU Info Card ── */
+  .mfu-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 24px; margin-bottom: 28px;
+    display: flex; align-items: center; gap: 20px;
+    position: relative; overflow: hidden;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .mfu-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: linear-gradient(180deg, #8b1a2e, #c8922a);
+  }
+  .mfu-logo {
+    width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #8b1a2e, #6b1422);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; border: 2px solid rgba(200,146,42,0.5);
+    box-shadow: 0 0 16px rgba(139,26,46,0.3);
+  }
+  .mfu-info { flex: 1; min-width: 0; }
+  .mfu-name-en {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    color: var(--text); letter-spacing: -0.01em; line-height: 1.3;
+  }
+  .mfu-name-th {
+    font-family: var(--sans); font-size: 12px; color: var(--muted);
+    margin-top: 2px; line-height: 1.4;
+  }
+  .mfu-meta {
+    display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 10px;
+  }
+  .mfu-meta-item {
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  .meta-label {
+    font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: #c8922a; font-weight: 700;
+  }
+  .meta-val {
+    font-family: var(--mono); font-size: 11px; color: var(--text);
+  }
+  .mfu-badge {
+    flex-shrink: 0; background: rgba(139,26,46,0.12);
+    border: 1px solid rgba(139,26,46,0.35); border-radius: 8px;
+    padding: 6px 14px; font-family: var(--mono); font-size: 10px;
+    font-weight: 700; color: #c8922a; letter-spacing: 0.1em;
+    text-transform: uppercase; align-self: flex-start;
+  }
+  @media (max-width: 600px) {
+    .mfu-card { flex-wrap: wrap; }
+    .mfu-badge { width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-left">
+      <div>
+        <h1>Receipt Viewer</h1>
+        <p>OCR · Thai Field Extraction · ML Verdict</p>
+      </div>
+    </div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+      <span id="themeIcon">🌙</span>
+      <span id="themeLabel">Dark Mode</span>
+    </button>
+  </header>
+
+
+  <!-- Upload zone -->
+  <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png">
+    <span class="upload-icon">🧾</span>
+    <h2>Drop receipt image here</h2>
+    <p>Supports JPG / PNG</p>
+    <div class="upload-btn">Choose File</div>
+    <div class="compact-btn">Change File</div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="instructions" id="instructionsSection">
+    <div class="instr-step">
+      <div class="instr-num">1</div>
+      <div class="instr-text">
+        <h3>Capture</h3>
+        <p>Take a photo or scan your receipt and save it as JPG or PNG</p>
+      </div>
+    </div>
+    <div class="instr-step">
+      <div class="instr-num">2</div>
+      <div class="instr-text">
+        <h3>Upload</h3>
+        <p>Click "Choose File" or drag and drop the file above</p>
+      </div>
+    </div>
+    <div class="instr-step">
+      <div class="instr-num">3</div>
+      <div class="instr-text">
+        <h3>Get Results</h3>
+        <p>The system will extract all fields and verify completeness instantly</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="recent-section" id="recentSection">
+    <div class="recent-header">
+      <span>🕐 Upload History</span>
+      <span class="recent-clear" onclick="clearRecent()">Clear All</span>
+    </div>
+    <div class="recent-list" id="recentList">
+      <div class="recent-empty" id="recentEmpty">No upload history yet</div>
+    </div>
+  </div>
+
+  <div class="summary-bar" id="summaryBar" style="display:none"></div>
+
+  <div class="main-grid" id="mainGrid" style="display:none">
+    <div class="panel">
+      <div class="panel-header"><span class="dot"></span> Receipt Image</div>
+      <div class="img-container">
+        <img id="previewImg" src="" alt="receipt">
+      </div>
+    </div>
+    <div class="fields-panel">
+      <div class="panel-header"><span class="dot"></span> Detected Fields</div>
+      <div id="fieldsBody" class="fields-body"></div>
+      <div class="ocr-toggle" id="ocrToggle" style="display:none" onclick="toggleOCR()">▸ Raw OCR Text</div>
+      <div class="ocr-box" id="ocrBox"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+var API_KEY = "sk-HytrxVrL2v19alxMtEs8BzXfGpzTWX5Uc7x6q4mYR9osAcYl";  // ← ใส่ API key ของคุณ
+
+// ── Thai patterns ─────────────────────────────────────────────────────────────
+var THAI_MONTHS_RE = /มกราคม|ม\.ค\.|กุมภาพันธ์|ก\.พ\.|มีนาคม|มี\.ค\.|เมษายน|เม\.ย\.|พฤษภาคม|พ\.ค\.|มิถุนายน|มิ\.ย\.|กรกฎาคม|ก\.ค\.|สิงหาคม|ส\.ค\.|กันยายน|ก\.ย\.|ตุลาคม|ต\.ค\.|พฤศจิกายน|พ\.ย\.|ธันวาคม|ธ\.ค\./;
+var THAI_NUM_WORDS = ["หนึ่ง","สอง","สาม","สี่","ห้า","หก","เจ็ด","แปด","เก้า","สิบ","ร้อย","พัน","หมื่น","แสน","ล้าน"];
+var THAI_TOTAL_KW  = ["ยอดรวมทั้งหมด","จำนวนเงินรวมทั้งสิ้น","รวมทั้งสิ้น","ยอดรวม","รวมเป็นเงิน","ราคารวมสุทธิ","ยอดชำระ","รวมสุทธิ","จำนวนเงินทั้งสิ้น","รวมทั้งหมด"];
+
+// ── OCR ───────────────────────────────────────────────────────────────────────
+async function runOCR(file) {
+  var formData = new FormData();
+  formData.append("file", file, file.name);
+  formData.append("model", "typhoon-ocr");
+  var response = await fetch("https://api.opentyphoon.ai/v1/ocr", {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + API_KEY },
+    body: formData
+  });
+  if (!response.ok) throw new Error("OCR failed: " + response.status);
+  var data = await response.json();
+  var raw = data.results[0].message.choices[0].message.content;
+  return raw.replace(/<[^>]*>/g, "");
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function normalize(text) { return text.toLowerCase().replace(/\s+/g, " ").trim(); }
+
+function getLines(text) {
+  return text.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l !== ""; });
+}
+
+// ── MFU Detection functions ───────────────────────────────────────────────────
+
+function detectMfuName(text) {
+  var t = normalize(text);
+  var keywords = ["mae fah luang", "maefah luang", "mfl university", "mfu",
+                  "แม่ฟ้าหลวง", "มหาวิทยาลัยแม่ฟ้าหลวง", "ม.ฟ.ล."];
+  for (var i = 0; i < keywords.length; i++) {
+    if (t.indexOf(keywords[i]) !== -1) {
+      var lines = getLines(text);
+      for (var j = 0; j < lines.length; j++) {
+        if (normalize(lines[j]).indexOf(keywords[i]) !== -1) return lines[j].trim();
+      }
+      return keywords[i];
+    }
+  }
+  return null;
+}
+
+function detectMfuAddress(text) {
+  var t = normalize(text);
+  var mfuKeywords = ["mae fah luang", "แม่ฟ้าหลวง", "mfu", "ม.ฟ.ล."];
+  var hasMfu = mfuKeywords.some(function(k){ return t.indexOf(k) !== -1; });
+  if (!hasMfu) return null;
+  var lines = getLines(text);
+  for (var i = 0; i < lines.length; i++) {
+    var l = normalize(lines[i]);
+    if (l.indexOf("333") !== -1 || l.indexOf("ท่าสุด") !== -1 ||
+        l.indexOf("thasud") !== -1 || l.indexOf("เชียงราย") !== -1 ||
+        l.indexOf("chiang rai") !== -1 || l.indexOf("57100") !== -1) {
+      return lines[i].trim();
+    }
+  }
+  return null;
+}
+
+function detectMfuTaxId(text) {
+  var t = normalize(text);
+  var mfuKeywords = ["mae fah luang", "แม่ฟ้าหลวง", "mfu", "ม.ฟ.ล."];
+  var hasMfu = mfuKeywords.some(function(k){ return t.indexOf(k) !== -1; });
+  if (!hasMfu) return null;
+  // MFU's known tax ID
+  if (text.indexOf("0994000158187") !== -1) return "0994000158187";
+  var m = text.match(/\b0\d{12}\b/);
+  if (m) return m[0];
+  return null;
+}
+
+// ── 11 Detection functions ────────────────────────────────────────────────────
+
+function detectStoreName(text) {
+  var lines = getLines(text);
+  var t = normalize(text);
+  var thaiSuffixes = ["จำกัด","มหาชน","บริษัท","ห้างหุ้นส่วน","ร้าน","หจก.","บจก.","บมจ."];
+  var engKeywords  = ["co.,ltd","co., ltd","ltd.","company","shop","store","bakery","cafe",
+                      "restaurant","hotel","hospital","clinic","center","centre","service",
+                      "technology","university","inc."];
+  var skipWords = ["ใบแจ้งหนี้","ใบเสร็จ","วันที่","ยอดรวม","รายการ","ลูกค้า","ที่อยู่",
+                   "receipt","invoice","date","total","description","bill to","tax id"];
+
+  // Try first 6 lines for a company-like line
+  for (var i = 0; i < Math.min(lines.length, 6); i++) {
+    var line = lines[i];
+    var lower = normalize(line);
+    if (line.length < 3) continue;
+    if (/^\d/.test(line)) continue;
+    if (/\d{5,}/.test(line)) continue;
+    var hasSkip = skipWords.some(function(s){ return lower.indexOf(s) !== -1; });
+    if (hasSkip) continue;
+    var hasThai = thaiSuffixes.some(function(s){ return line.indexOf(s) !== -1; });
+    var hasEng  = engKeywords.some(function(s){ return lower.indexOf(s) !== -1; });
+    if (hasThai || hasEng) return line;
+    // Decent-length non-numeric line at top = likely store name
+    if (line.length >= 4 && !/^(วัน|เลข|โทร|แฟกซ์|fax|tel|phone|email|www)/.test(lower)) return line;
+  }
+  return null;
+}
+
+function detectStoreAddress(text) {
+  var lines = getLines(text);
+  var thaiAddr = ["หมู่","ตำบล","อำเภอ","จังหวัด","ถนน","ถ.","ซอย","ซ.","แขวง","เขต",
+                  "กรุงเทพ","กรุงเทพมหานคร","นนทบุรี","ปทุมธานี","เชียงราย","เชียงใหม่","ขอนแก่น"];
+  var engAddr  = ["road","rd.","street","st.","anywhere st","moo","any city"];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (thaiAddr.some(function(k){ return line.indexOf(k) !== -1; })) return line;
+    if (engAddr.some(function(k){ return normalize(line).indexOf(k) !== -1; })) return line;
+    if (/^\d+\/\d+/.test(line)) return line;
+    if (/\b1\d{4}\b|\b[2-9]\d{4}\b/.test(line)) return line;
+  }
+  return null;
+}
+
+function detectStoreTaxId(text) {
+  var thaiLabels = ["เลขประจำตัวผู้เสียภาษี","เลขผู้เสียภาษี","เลขประจำตัวนิติบุคคล","tax id","tax no"];
+  var lower = text.toLowerCase();
+  for (var i = 0; i < thaiLabels.length; i++) {
+    var label = thaiLabels[i];
+    var idx = text.indexOf(label) !== -1 ? text.indexOf(label) : lower.indexOf(label);
+    if (idx !== -1) {
+      var snippet = text.slice(idx, idx + 40);
+      var m = snippet.match(/\d{10,13}/);
+      if (m) return m[0];
+    }
+  }
+  var m13 = text.match(/\b\d{13}\b/);
+  if (m13) return m13[0];
+  return null;
+}
+
+function detectStorePhone(text) {
+  var lower = normalize(text);
+  var hasLabel = ["โทร","โทรศัพท์","tel","phone","mobile"].some(function(k){ return lower.indexOf(k) !== -1; });
+  if (hasLabel) {
+    var m = text.match(/\d{2,3}[\-\s]?\d{3,4}[\-\s]?\d{3,4}/);
+    if (m) return m[0];
+  }
+  var mobile = text.match(/\b0[6-9]\d[\-\s]?\d{3,4}[\-\s]?\d{4}\b/);
+  if (mobile) return mobile[0];
+  var land = text.match(/\b0\d[\-\s]\d{3,4}[\-\s]\d{4}\b/);
+  if (land) return land[0];
+  var intl = text.match(/\+66[\-\s]?\d[\d\-\s]{7,}/);
+  if (intl) return intl[0].trim();
+  return null;
+}
+
+function detectDate(text) {
+  // Thai date label
+  var m = text.match(/วันที่\s*[:\s]?\s*(.{1,40})/);
+  if (m) {
+    var dateInLine = extractDateValue(m[1]);
+    if (dateInLine) return dateInLine;
+  }
+  // Thai month names
+  if (THAI_MONTHS_RE.test(text)) {
+    var thaiDate = text.match(/\d{1,2}\s*(?:มกราคม|ม\.ค\.|กุมภาพันธ์|ก\.พ\.|มีนาคม|มี\.ค\.|เมษายน|เม\.ย\.|พฤษภาคม|พ\.ค\.|มิถุนายน|มิ\.ย\.|กรกฎาคม|ก\.ค\.|สิงหาคม|ส\.ค\.|กันยายน|ก\.ย\.|ตุลาคม|ต\.ค\.|พฤศจิกายน|พ\.ย\.|ธันวาคม|ธ\.ค\.)\s*\d{2,4}/);
+    if (thaiDate) return thaiDate[0];
+  }
+  return extractDateValue(text);
+}
+
+function extractDateValue(str) {
+  var patterns = [
+    /\b\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}\b/i,
+    /\b[A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}\b/i,
+    /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/,
+  ];
+  for (var i = 0; i < patterns.length; i++) {
+    var m = str.match(patterns[i]);
+    if (m) return m[0];
+  }
+  return null;
+}
+
+function detectInvoiceNumber(text) {
+  var thaiLabels = ["เลขที่","ใบแจ้งหนี้เลขที่","เลขที่ใบแจ้งหนี้","เลขที่ใบเสร็จ","เลขที่เอกสาร","หมายเลข"];
+  for (var i = 0; i < thaiLabels.length; i++) {
+    var label = thaiLabels[i];
+    if (text.indexOf(label) !== -1) {
+      var idx = text.indexOf(label);
+      var snippet = text.slice(idx + label.length, idx + label.length + 30);
+      var m = snippet.match(/[A-Z\d][\w\-\/]{2,}/);
+      if (m) return m[0];
+    }
+  }
+  var eng = text.match(/(invoice|receipt|inv|no\.?|#)\s*[:\s]+([A-Z\d][\w\-\/]{2,})/i);
+  if (eng) return eng[2];
+  var prefix = text.match(/\b(?:IV|SR|DS|BK|IVEN|lv)\d+/i);
+  if (prefix) return prefix[0];
+  var numSlash = text.match(/\b\d{4,6}[\-\/]\d{3,}\b/);
+  if (numSlash) return numSlash[0];
+  return null;
+}
+
+function detectItemList(text) {
+  var t = normalize(text);
+  var headers = ["รายการ","รายละเอียด","รายการสินค้า","สินค้า","ลำดับ","description","item","qty","quantity","unit price"];
+  if (headers.some(function(h){ return t.indexOf(h) !== -1; })) return "Items found";
+  var prices = text.match(/[฿$]?[\d,]+\.\d{2}/g);
+  if (prices && prices.length >= 2) return "Items found";
+  return null;
+}
+
+function detectAmount(text) {
+  for (var i = 0; i < THAI_TOTAL_KW.length; i++) {
+    var kw = THAI_TOTAL_KW[i];
+    if (text.indexOf(kw) !== -1) {
+      var idx = text.indexOf(kw);
+      var snippet = text.slice(idx, idx + 60);
+      var m = snippet.match(/[฿]?[\d,]{3,}/);
+      if (m) return m[0].replace(/[฿]/g,"");
+    }
+  }
+  // English fallback
+  var grandTotal = text.match(/grand\s*total[\s:]*([฿$]?[\d,]+\.?\d*)/i);
+  if (grandTotal) return grandTotal[1];
+  var totalMatch = text.match(/(?<![a-z])total[\s:\*]*([\d,]+\.\d{2})/i);
+  if (totalMatch) return totalMatch[1];
+  return null;
+}
+
+function detectVat(text) {
+  var t = normalize(text);
+  if (t.indexOf("ภาษีมูลค่าเพิ่ม") !== -1 || t.indexOf("ภาษี") !== -1 || t.indexOf("vat") !== -1) {
+    var m = text.match(/(?:ภาษีมูลค่าเพิ่ม|vat)[^:\n]*[:\s]+([\d,]+\.?\d*)/i);
+    if (m) return m[1];
+    return "VAT present";
+  }
+  return null;
+}
+
+function detectAmountWords(text) {
+  if (text.indexOf("บาทถ้วน") !== -1) {
+    // Grab the surrounding phrase
+    var idx = text.indexOf("บาทถ้วน");
+    var start = Math.max(0, idx - 40);
+    return text.slice(start, idx + 7).trim();
+  }
+  for (var i = 0; i < THAI_NUM_WORDS.length; i++) {
+    var w = THAI_NUM_WORDS[i];
+    if (text.indexOf(w) !== -1 && text.indexOf("บาท") !== -1) {
+      var wi = text.indexOf(w);
+      var bi = text.indexOf("บาท", wi);
+      if (bi !== -1 && bi - wi < 60) {
+        return text.slice(wi, bi + 4).trim();
+      }
+    }
+  }
+  var eng = text.match(/\(([A-Za-z\s\-,]+baht(?:\s+only)?)\)/i);
+  if (eng && eng[1].length > 8) return eng[1].trim();
+  return null;
+}
+
+function detectSignature(text) {
+  var t = normalize(text);
+  var keywords = ["ผู้รับเงิน","ผู้จ่ายเงิน","ผู้อนุมัติ","ผู้ตรวจสอบ","ผู้จัดการ",
+                  "ผู้รับใบแจ้งหนี้","ผู้ออกใบแจ้งหนี้","ผู้รับบิล","ผู้วางบิล",
+                  "เจ้าหน้าที่การเงิน","ผู้รับสินค้า","ผู้จัดทำ","ผู้ส่งสินค้า",
+                  "cashier","signature","signed by","approved by","received by","delivery by"];
+  for (var i = 0; i < keywords.length; i++) {
+    if (t.indexOf(keywords[i]) !== -1) return "Signature present";
+  }
+  return null;
+}
+
+// ── Claude Vision fallback (for store info when OCR misses it) ─────────────
+async function tryClaudeVisionFallback(file) {
+  var base64Image = await new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function() { resolve(reader.result.split(",")[1]); };
+    reader.onerror = function() { reject(new Error("Could not read image")); };
+    reader.readAsDataURL(file);
+  });
+  var response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 400,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data: base64Image } },
+          { type: "text", text: "Look at this Thai receipt image. Find the store/vendor information. Return ONLY a JSON object: {\"storeName\": \"...\", \"storeAddress\": \"...\", \"storeTaxId\": \"...\", \"storePhone\": \"...\"}. Use null if not found. No other text." }
+        ]
+      }]
+    })
+  });
+  if (!response.ok) throw new Error("Vision API failed: " + response.status);
+  var data = await response.json();
+  var txt = data.content[0].text.trim().replace(/```json|```/g, "").trim();
+  return JSON.parse(txt);
+}
+
+// ── Build HTML ────────────────────────────────────────────────────────────────
+function buildFieldRow(label, value, delayMs) {
+  var isMissing = !value;
+  var cssClass  = isMissing ? "missing" : "ok";
+  var display   = isMissing ? "Not found" : String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return '<div class="field-row" style="animation-delay:' + delayMs + 'ms">'
+    + '<div class="field-label">' + label + '</div>'
+    + '<div class="field-value ' + cssClass + '">' + display + '</div>'
+    + '</div>';
+}
+
+function buildResultsHTML(f) {
+  var h = "";
+  h += '<div class="section-divider">MFU / Issuer</div>';
+  h += buildFieldRow("MFU Name",       f.mfuName,     0);
+  h += buildFieldRow("MFU Address",    f.mfuAddress,  60);
+  h += buildFieldRow("MFU Tax ID",     f.mfuTaxId,    120);
+
+  h += '<div class="section-divider">Store / Vendor</div>';
+  h += buildFieldRow("Store Name",     f.storeName,   0);
+  h += buildFieldRow("Store Address",  f.storeAddress,60);
+  h += buildFieldRow("Store Tax ID",   f.storeTaxId,  120);
+
+  h += '<div class="section-divider">Transaction</div>';
+  h += buildFieldRow("Date",           f.date,        0);
+  h += buildFieldRow("Amount",         f.amount,      60);
+  h += buildFieldRow("Amount in Words",f.amountWords, 120);
+  h += buildFieldRow("Signature",      f.signature,   180);
+  return h;
+}
+
+function showSummary(f) {
+  var vals = Object.values(f);
+  var found   = vals.filter(Boolean).length;
+  var missing = vals.length - found;
+  var pct     = Math.round(found / vals.length * 100);
+  document.getElementById("summaryBar").innerHTML =
+    '<div class="stat-chip"><div class="num good">' + found + '</div><div class="lbl">Found</div></div>' +
+    '<div class="stat-chip"><div class="num ' + (missing > 0 ? "bad" : "good") + '">' + missing + '</div><div class="lbl">Missing</div></div>' +
+    '<div class="stat-chip"><div class="num" style="color:var(--warn)">' + pct + '%</div><div class="lbl">Completeness</div></div>';
+  document.getElementById("summaryBar").style.display = "flex";
+}
+
+function toggleOCR() {
+  var box = document.getElementById("ocrBox");
+  var btn = document.getElementById("ocrToggle");
+  box.classList.toggle("show");
+  btn.textContent = box.classList.contains("show") ? "▾ Hide OCR Text" : "▸ Raw OCR Text";
+}
+
+// ── Main process ──────────────────────────────────────────────────────────────
+async function processFile(file) {
+  document.getElementById("dropZone").classList.add("compact");
+  document.getElementById("instructionsSection").style.display = "none";
+  document.getElementById("recentSection").style.display = "none";
+  addToRecent(file.name);
+
+  document.getElementById("mainGrid").style.display = "grid";
+  document.getElementById("summaryBar").style.display = "none";
+  document.getElementById("previewImg").src = URL.createObjectURL(file);
+  document.getElementById("ocrToggle").style.display = "none";
+  document.getElementById("ocrBox").classList.remove("show");
+  document.getElementById("fieldsBody").innerHTML =
+    '<div class="loading-wrap"><div class="spinner"></div>' +
+    '<div class="loading-text">Running OCR...</div>' +
+    '<div class="loading-sub">Contacting Typhoon OCR API</div></div>';
+
+  try {
+    var ocrText = await runOCR(file);
+
+    var fields = {
+      mfuName:       detectMfuName(ocrText),
+      mfuAddress:    detectMfuAddress(ocrText),
+      mfuTaxId:      detectMfuTaxId(ocrText),
+      storeName:     detectStoreName(ocrText),
+      storeAddress:  detectStoreAddress(ocrText),
+      storeTaxId:    detectStoreTaxId(ocrText),
+      date:          detectDate(ocrText),
+      amount:        detectAmount(ocrText),
+      amountWords:   detectAmountWords(ocrText),
+      signature:     detectSignature(ocrText)
+    };
+
+    // Vision fallback if all store fields missed
+    var storeMissing = !fields.storeName && !fields.storeAddress && !fields.storeTaxId;
+    if (storeMissing && ocrText.length > 80) {
+      document.getElementById("fieldsBody").innerHTML =
+        '<div class="loading-wrap"><div class="spinner"></div>' +
+        '<div class="loading-text">OCR missed store info...</div>' +
+        '<div class="loading-sub">Using Claude Vision as fallback</div></div>';
+      try {
+        var vis = await tryClaudeVisionFallback(file);
+        if (vis.storeName)    fields.storeName    = vis.storeName;
+        if (vis.storeAddress) fields.storeAddress = vis.storeAddress;
+        if (vis.storeTaxId)   fields.storeTaxId   = vis.storeTaxId;
+        if (vis.storePhone)   fields.storePhone   = vis.storePhone;
+      } catch(e) { console.log("Vision fallback failed:", e.message); }
+    }
+
+    // Feature vector for ML model
+    var features = {
+      has_mfu_name:       fields.mfuName      ? 1 : 0,
+      has_mfu_address:    fields.mfuAddress    ? 1 : 0,
+      has_mfu_tax_id:     fields.mfuTaxId      ? 1 : 0,
+      has_store_name:     fields.storeName     ? 1 : 0,
+      has_store_address:  fields.storeAddress  ? 1 : 0,
+      has_store_tax_id:   fields.storeTaxId    ? 1 : 0,
+      has_date:           fields.date          ? 1 : 0,
+      has_amount:         fields.amount        ? 1 : 0,
+      has_amount_words:   fields.amountWords   ? 1 : 0,
+      has_signature:      fields.signature     ? 1 : 0
+    };
+
+    // Call Flask model server
+    var verdictHTML = "";
+    try {
+      var modelRes = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(features)
+      });
+      var verdict = await modelRes.json();
+
+      var anyMissing = Object.values(features).some(function(v){ return v === 0; });
+      var isComplete = (verdict.result === "Complete" || verdict.prediction === 1) && !anyMissing;
+      var vColor = isComplete ? "#22c55e" : "#ff3355";
+      var confPct  = parseFloat(verdict.confidence || 80).toFixed(1);
+      var errorPct = (100 - parseFloat(confPct)).toFixed(1);
+
+      verdictHTML =
+        '<div style="padding:14px 16px;margin-bottom:12px;' +
+        'background:' + (isComplete ? 'rgba(34,197,94,0.1)' : 'rgba(255,51,85,0.1)') + ';' +
+        'border:1px solid ' + vColor + ';border-radius:10px;text-align:center;">' +
+
+        '<div style="font-size:20px;font-weight:700;color:' + vColor + ';font-family:monospace;margin-bottom:10px;">' +
+        (isComplete ? '✔ Complete' : '✘ Incomplete') + '</div>' +
+
+        '<div style="display:flex;border-radius:8px;overflow:hidden;height:30px;font-family:monospace;font-size:12px;font-weight:600;">' +
+        '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;' +
+        'background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-right:none;border-radius:8px 0 0 8px;">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span>' +
+        '<span style="color:#22c55e;">Confidence&nbsp;' + confPct + '%</span></div>' +
+
+        '<div style="width:1px;background:var(--border);"></div>' +
+
+        '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;' +
+        'background:rgba(255,51,85,0.13);border:1px solid rgba(255,51,85,0.45);border-left:none;border-radius:0 8px 8px 0;">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:#ff3355;display:inline-block;"></span>' +
+        '<span style="color:#ff3355;">Error&nbsp;' + errorPct + '%</span></div></div>' +
+
+        '<div style="margin-top:7px;font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:0.06em;">BEST_MODEL_THAI.PKL</div>' +
+        '</div>';
+
+    } catch(modelErr) {
+      console.log("Model server not reachable:", modelErr.message);
+      verdictHTML =
+        '<div style="padding:10px 14px;margin-bottom:12px;' +
+        'background:rgba(255,200,0,0.08);border:1px solid rgba(255,200,0,0.3);' +
+        'border-radius:8px;font-family:monospace;font-size:11px;color:#f0c040;">' +
+        'Model server not running — showing fields only. Run server.py to enable prediction.' +
+        '</div>';
+    }
+
+    document.getElementById("fieldsBody").innerHTML = verdictHTML + buildResultsHTML(fields);
+    showSummary(fields);
+    document.getElementById("ocrBox").textContent = ocrText;
+    document.getElementById("ocrToggle").style.display = "flex";
+
+  } catch(err) {
+    document.getElementById("fieldsBody").innerHTML =
+      '<div class="error-box">❌ ' + err.message + '</div>';
+  }
+}
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+function toggleTheme() {
+  var isLight = document.documentElement.getAttribute("data-theme") === "light";
+  if (isLight) {
+    document.documentElement.removeAttribute("data-theme");
+    document.getElementById("themeIcon").textContent = "🌙";
+    document.getElementById("themeLabel").textContent = "Dark Mode";
+  } else {
+    document.documentElement.setAttribute("data-theme", "light");
+    document.getElementById("themeIcon").textContent = "☀️";
+    document.getElementById("themeLabel").textContent = "Light Mode";
+  }
+}
+
+// ── Recent activity ───────────────────────────────────────────────────────────
+var RECENT_KEY = "thai_receipt_viewer_recent";
+function loadRecent() { try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch(e) { return []; } }
+function saveRecent(items) { try { localStorage.setItem(RECENT_KEY, JSON.stringify(items)); } catch(e) {} }
+function addToRecent(name) {
+  var items = loadRecent().filter(function(i){ return i.name !== name; });
+  items.unshift({ name: name, time: Date.now() });
+  if (items.length > 8) items = items.slice(0, 8);
+  saveRecent(items); renderRecent();
+}
+function clearRecent() { saveRecent([]); renderRecent(); }
+function timeAgo(ts) {
+  var s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + "s";
+  if (s < 3600) return Math.floor(s/60) + "m";
+  if (s < 86400) return Math.floor(s/3600) + "h";
+  return Math.floor(s/86400) + "d";
+}
+function renderRecent() {
+  var items = loadRecent();
+  var list  = document.getElementById("recentList");
+  if (!list) return;
+  if (!items.length) { list.innerHTML = '<div class="recent-empty">No upload history yet</div>'; return; }
+  list.innerHTML = items.map(function(item) {
+    return '<div class="recent-item"><span>🧾</span><span>' + item.name +
+           '</span><span class="ri-time">' + timeAgo(item.time) + ' ago</span></div>';
+  }).join("");
+}
+renderRecent();
+
+// ── File input / drag-drop ────────────────────────────────────────────────────
+document.getElementById("fileInput").addEventListener("change", function(e) {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+var dz = document.getElementById("dropZone");
+dz.addEventListener("dragover",  function(e){ e.preventDefault(); dz.classList.add("drag"); });
+dz.addEventListener("dragleave", function(){ dz.classList.remove("drag"); });
+dz.addEventListener("drop", function(e){
+  e.preventDefault(); dz.classList.remove("drag");
+  var f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith("image/")) processFile(f);
+});
+</script>
+</body>
+</html>
