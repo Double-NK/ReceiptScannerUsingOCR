@@ -424,25 +424,36 @@ function detectMfuAddress(text) {
   var mfuKeywords = ["mae fah luang", "แม่ฟ้าหลวง", "mfu", "ม.ฟ.ล."];
   var hasMfu = mfuKeywords.some(function(k){ return t.indexOf(k) !== -1; });
   if (!hasMfu) return null;
+
   var lines = getLines(text);
   for (var i = 0; i < lines.length; i++) {
     var l = normalize(lines[i]);
+    // ← Must contain actual MFU address markers
     if (l.indexOf("333") !== -1 || l.indexOf("ท่าสุด") !== -1 ||
-        l.indexOf("thasud") !== -1 || l.indexOf("เชียงราย") !== -1 ||
-        l.indexOf("chiang rai") !== -1 || l.indexOf("57100") !== -1) {
+        l.indexOf("thasud") !== -1 || l.indexOf("57100") !== -1 ||
+        (l.indexOf("chiang rai") !== -1 && l.indexOf("moo") !== -1)) {
       return lines[i].trim();
     }
   }
+
+  // ← Fallback: look for the hardcoded MFU address
+  var m = text.match(/333\s*(?:moo|หมู่)[^,\n]{0,60}/i);
+  if (m) return m[0].trim();
+
   return null;
 }
 
 function detectMfuTaxId(text) {
+  // Known MFU tax IDs — check directly
+  if (text.indexOf("0994000165178") !== -1) return "0994000165178";
+  if (text.indexOf("0994000209983") !== -1) return "0994000209983";
+
+  // ← Only look near MFU name lines, not the whole document
+  var mfuKeywords = ["mae fah luang", "แม่ฟ้าหลวง", "mfu"];
   var t = normalize(text);
-  var mfuKeywords = ["mae fah luang", "แม่ฟ้าหลวง", "mfu", "ม.ฟ.ล."];
   var hasMfu = mfuKeywords.some(function(k){ return t.indexOf(k) !== -1; });
   if (!hasMfu) return null;
-  // MFU's known tax ID
-  if (text.indexOf("0994000158187") !== -1) return "0994000158187";
+
   var m = text.match(/\b0\d{12}\b/);
   if (m) return m[0];
   return null;
@@ -452,15 +463,14 @@ function detectMfuTaxId(text) {
 
 function detectStoreName(text) {
   var lines = getLines(text);
-  var t = normalize(text);
   var thaiSuffixes = ["จำกัด","มหาชน","บริษัท","ห้างหุ้นส่วน","ร้าน","หจก.","บจก.","บมจ."];
   var engKeywords  = ["co.,ltd","co., ltd","ltd.","company","shop","store","bakery","cafe",
                       "restaurant","hotel","hospital","clinic","center","centre","service",
-                      "technology","university","inc."];
+                      "technology","inc."];
   var skipWords = ["ใบแจ้งหนี้","ใบเสร็จ","วันที่","ยอดรวม","รายการ","ลูกค้า","ที่อยู่",
-                   "receipt","invoice","date","total","description","bill to","tax id"];
+                   "receipt","invoice","date","total","description","bill to","tax id",
+                   "mae fah luang","แม่ฟ้าหลวง","mfu","university","มหาวิทยาลัย"]; // ← ADD THESE
 
-  // Try first 6 lines for a company-like line
   for (var i = 0; i < Math.min(lines.length, 6); i++) {
     var line = lines[i];
     var lower = normalize(line);
@@ -472,41 +482,53 @@ function detectStoreName(text) {
     var hasThai = thaiSuffixes.some(function(s){ return line.indexOf(s) !== -1; });
     var hasEng  = engKeywords.some(function(s){ return lower.indexOf(s) !== -1; });
     if (hasThai || hasEng) return line;
-    // Decent-length non-numeric line at top = likely store name
     if (line.length >= 4 && !/^(วัน|เลข|โทร|แฟกซ์|fax|tel|phone|email|www)/.test(lower)) return line;
   }
-  return null;
+  return null; // ← return null if nothing non-MFU found
 }
 
 function detectStoreAddress(text) {
   var lines = getLines(text);
   var thaiAddr = ["หมู่","ตำบล","อำเภอ","จังหวัด","ถนน","ถ.","ซอย","ซ.","แขวง","เขต",
                   "กรุงเทพ","กรุงเทพมหานคร","นนทบุรี","ปทุมธานี","เชียงราย","เชียงใหม่","ขอนแก่น"];
-  var engAddr  = ["road","rd.","street","st.","anywhere st","moo","any city"];
+
+  // MFU's own address keywords to skip
+  var mfuAddrWords = ["333","ท่าสุด","thasud","57100","mae fah luang","แม่ฟ้าหลวง"];
+
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
+    var lower = normalize(line);
+
+    // Skip if it's MFU's own address
+    var isMfuAddr = mfuAddrWords.some(function(k){ return lower.indexOf(k) !== -1; });
+    if (isMfuAddr) continue;
+
     if (thaiAddr.some(function(k){ return line.indexOf(k) !== -1; })) return line;
-    if (engAddr.some(function(k){ return normalize(line).indexOf(k) !== -1; })) return line;
     if (/^\d+\/\d+/.test(line)) return line;
     if (/\b1\d{4}\b|\b[2-9]\d{4}\b/.test(line)) return line;
   }
   return null;
 }
-
 function detectStoreTaxId(text) {
+  var MFU_TAX_IDS = ["0994000165178", "0994000209983"]; // ← both known MFU tax IDs
   var thaiLabels = ["เลขประจำตัวผู้เสียภาษี","เลขผู้เสียภาษี","เลขประจำตัวนิติบุคคล","tax id","tax no"];
   var lower = text.toLowerCase();
+
   for (var i = 0; i < thaiLabels.length; i++) {
     var label = thaiLabels[i];
     var idx = text.indexOf(label) !== -1 ? text.indexOf(label) : lower.indexOf(label);
     if (idx !== -1) {
       var snippet = text.slice(idx, idx + 40);
       var m = snippet.match(/\d{10,13}/);
-      if (m) return m[0];
+      if (m && MFU_TAX_IDS.indexOf(m[0]) === -1) return m[0]; // ← skip MFU IDs
     }
   }
-  var m13 = text.match(/\b\d{13}\b/);
-  if (m13) return m13[0];
+
+  // Fallback: find any 13-digit number that isn't MFU's
+  var allMatches = text.match(/\b\d{13}\b/g) || [];
+  for (var i = 0; i < allMatches.length; i++) {
+    if (MFU_TAX_IDS.indexOf(allMatches[i]) === -1) return allMatches[i];
+  }
   return null;
 }
 
@@ -526,27 +548,89 @@ function detectStorePhone(text) {
   return null;
 }
 
-function detectDate(text) {
-  // Thai date label
-  var m = text.match(/วันที่\s*[:\s]?\s*(.{1,40})/);
-  if (m) {
-    var dateInLine = extractDateValue(m[1]);
-    if (dateInLine) return dateInLine;
-  }
-  // Thai month names
-  if (THAI_MONTHS_RE.test(text)) {
-    var thaiDate = text.match(/\d{1,2}\s*(?:มกราคม|ม\.ค\.|กุมภาพันธ์|ก\.พ\.|มีนาคม|มี\.ค\.|เมษายน|เม\.ย\.|พฤษภาคม|พ\.ค\.|มิถุนายน|มิ\.ย\.|กรกฎาคม|ก\.ค\.|สิงหาคม|ส\.ค\.|กันยายน|ก\.ย\.|ตุลาคม|ต\.ค\.|พฤศจิกายน|พ\.ย\.|ธันวาคม|ธ\.ค\.)\s*\d{2,4}/);
-    if (thaiDate) return thaiDate[0];
-  }
-  return extractDateValue(text);
+/* ---------- DATE HELPERS ---------- */
+function isDate(line) {
+if (!line) return false;
+
+// English full month
+if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(line)) return true;
+
+// English short month
+if (/\b(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b/i.test(line)) return true;
+
+// Numeric date
+if (/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(line)) return true;
+
+// "21 January 2025"
+if (/^\d{1,2}\s+\w+\s+\d{4}$/.test(line)) return true;
+
+// Thai months
+if (typeof THAI_MONTHS_RE !== "undefined" && THAI_MONTHS_RE.test(line)) return true;
+
+return false;
 }
+
+/* Extract actual date value */
+// AFTER — added dot separator
+function extractDateValue(str) {
+  var patterns = [
+    /\b\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}\b/i,
+    /\b[A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}\b/i,
+    /\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b/,  // ← added \. here
+  ];
+
+for (var i = 0; i < patterns.length; i++) {
+var m = str.match(patterns[i]);
+if (m) return m[0];
+}
+
+return null;
+}
+
+/* ---------- FINAL COMBINED FUNCTION ---------- */
+function detectDate(text) {
+if (!text) return null;
+
+var lines = text.split("\n").map(l => l.trim()).filter(l => l);
+
+/* 1️⃣ Thai label (วันที่:) */
+var m = text.match(/วันที่[\/]?(?:Date)?\s*[:\s]?\s*(.{1,40})/i);
+if (m) {
+var d = extractDateValue(m[1]);
+if (d) return d;
+}
+
+/* 2️⃣ English label (Date:) */
+m = text.match(/date\s*[:\s]\s*(.{1,40})/i);
+if (m) {
+var d = extractDateValue(m[1]);
+if (d) return d;
+}
+
+/* 3️⃣ Thai month detection */
+if (typeof THAI_MONTHS_RE !== "undefined" && THAI_MONTHS_RE.test(text)) {
+var thaiDate = text.match(/\d{1,2}\s*(?:มกราคม|ม.ค.|กุมภาพันธ์|ก.พ.|มีนาคม|มี.ค.|เมษายน|เม.ย.|พฤษภาคม|พ.ค.|มิถุนายน|มิ.ย.|กรกฎาคม|ก.ค.|สิงหาคม|ส.ค.|กันยายน|ก.ย.|ตุลาคม|ต.ค.|พฤศจิกายน|พ.ย.|ธันวาคม|ธ.ค.)\s*\d{2,4}/);
+if (thaiDate) return thaiDate[0];
+}
+
+/* 4️⃣ Scan line-by-line using isDate() */
+for (var i = 0; i < lines.length; i++) {
+if (isDate(lines[i])) {
+var d = extractDateValue(lines[i]);
+if (d) return d;
+}
+}
+
+/* 5️⃣ Fallback (full text) */
+return extractDateValue(text);
+}
+
 
 function extractDateValue(str) {
   var patterns = [
     /\b\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}\b/i,
     /\b[A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}\b/i,
-    /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/,
-  ];
+    /\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b/,  ];
   for (var i = 0; i < patterns.length; i++) {
     var m = str.match(patterns[i]);
     if (m) return m[0];
@@ -612,36 +696,56 @@ function detectVat(text) {
 }
 
 function detectAmountWords(text) {
+  // ── Thai: บาทถ้วน ──────────────────────────────────────
   if (text.indexOf("บาทถ้วน") !== -1) {
-    // Grab the surrounding phrase
     var idx = text.indexOf("บาทถ้วน");
-    var start = Math.max(0, idx - 40);
-    return text.slice(start, idx + 7).trim();
+    var chunk = text.slice(Math.max(0, idx - 60), idx + 7);
+    chunk = chunk.replace(/[\d,\.]+[^\u0E00-\u0E7F]*/g, "").trim();
+    chunk = chunk.replace(/^[^ก-๙]+/, "").trim();
+    if (chunk.length > 3) return chunk + "บาทถ้วน";
   }
-  for (var i = 0; i < THAI_NUM_WORDS.length; i++) {
-    var w = THAI_NUM_WORDS[i];
-    if (text.indexOf(w) !== -1 && text.indexOf("บาท") !== -1) {
-      var wi = text.indexOf(w);
-      var bi = text.indexOf("บาท", wi);
-      if (bi !== -1 && bi - wi < 60) {
-        return text.slice(wi, bi + 4).trim();
-      }
-    }
-  }
-  var eng = text.match(/\(([A-Za-z\s\-,]+baht(?:\s+only)?)\)/i);
-  if (eng && eng[1].length > 8) return eng[1].trim();
+
+  // ── English: (... baht only) ───────────────────────────
+  var m = text.match(/\(([A-Za-z\s\-]+baht\s+only)\)/i);
+  if (m && m[1].length > 8) return m[1].trim();
+
+  // ── English: (... baht and ... satang) ────────────────
+  m = text.match(/\(([A-Za-z\s\-]+baht\s+and\s+[a-z\-]+\s+satang)\)/i);
+  if (m && m[1].length > 8) return m[1].trim();
+
+  // ── English: amount: ... baht ... ─────────────────────
+  m = text.match(/amount[:\s]*\(?([A-Za-z\s\-,]+baht(?:\s+and\s+[a-z\-]+\s+satang)?(?:\s+only)?)\)?/i);
+  if (m && m[1].length > 8) return m[1].trim();
+
+  // ── English: capitalized phrase ending in baht ─────────
+  m = text.match(/([A-Z][a-z]+(?:\s+[a-z\-]+){2,}\s+baht(?:\s+only)?)/i);
+  if (m && m[1].length > 8) return m[1].trim();
+
   return null;
 }
 
 function detectSignature(text) {
   var t = normalize(text);
+
+  // ── Thai keywords ──────────────────────────────────────
   var keywords = ["ผู้รับเงิน","ผู้จ่ายเงิน","ผู้อนุมัติ","ผู้ตรวจสอบ","ผู้จัดการ",
                   "ผู้รับใบแจ้งหนี้","ผู้ออกใบแจ้งหนี้","ผู้รับบิล","ผู้วางบิล",
                   "เจ้าหน้าที่การเงิน","ผู้รับสินค้า","ผู้จัดทำ","ผู้ส่งสินค้า",
-                  "cashier","signature","signed by","approved by","received by","delivery by"];
+                  "cashier","signature","signed by","approved by","received by",
+                  "delivery by","manager","finance staff"];
   for (var i = 0; i < keywords.length; i++) {
     if (t.indexOf(keywords[i]) !== -1) return "Signature present";
   }
+
+  // ── English: signature keyword in lower half of doc ───
+  var lines = text.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l !== ""; });
+  var total = lines.length;
+  for (var i = 0; i < total; i++) {
+    if (/\bsignature\b/i.test(lines[i]) && i >= total * 0.5) {
+      return "Signature present";
+    }
+  }
+
   return null;
 }
 
@@ -798,34 +902,41 @@ async function processFile(file) {
       var verdict = await modelRes.json();
 
       var anyMissing = Object.values(features).some(function(v){ return v === 0; });
-      var isComplete = (verdict.result === "Complete" || verdict.prediction === 1) && !anyMissing;
+      var isComplete = !anyMissing;
       var vColor = isComplete ? "#22c55e" : "#ff3355";
-      var confPct  = parseFloat(verdict.confidence || 80).toFixed(1);
-      var errorPct = (100 - parseFloat(confPct)).toFixed(1);
+      var confPct  = verdict.confidence != null ? parseFloat(verdict.confidence).toFixed(1) : null;
+      var errorPct = confPct != null ? (100 - parseFloat(confPct)).toFixed(1) : null;
 
-      verdictHTML =
-        '<div style="padding:14px 16px;margin-bottom:12px;' +
-        'background:' + (isComplete ? 'rgba(34,197,94,0.1)' : 'rgba(255,51,85,0.1)') + ';' +
-        'border:1px solid ' + vColor + ';border-radius:10px;text-align:center;">' +
+  verdictHTML =
+  '<div style="padding:14px 16px;margin-bottom:12px;' +
+  'background:' + (isComplete ? 'rgba(34,197,94,0.1)' : 'rgba(255,51,85,0.1)') + ';' +
+  'border:1px solid ' + vColor + ';border-radius:10px;text-align:center;">' +
 
-        '<div style="font-size:20px;font-weight:700;color:' + vColor + ';font-family:monospace;margin-bottom:10px;">' +
-        (isComplete ? '✔ Complete' : '✘ Incomplete') + '</div>' +
+  '<div style="font-size:20px;font-weight:700;color:' + vColor + ';font-family:monospace;margin-bottom:10px;">' +
+  (isComplete ? '✔ Complete' : '✘ Incomplete') + '</div>' +
 
-        '<div style="display:flex;border-radius:8px;overflow:hidden;height:30px;font-family:monospace;font-size:12px;font-weight:600;">' +
-        '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;' +
-        'background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-right:none;border-radius:8px 0 0 8px;">' +
-        '<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span>' +
-        '<span style="color:#22c55e;">Confidence&nbsp;' + confPct + '%</span></div>' +
+  '<div style="display:flex;border-radius:8px;overflow:hidden;height:30px;font-family:monospace;font-size:12px;font-weight:600;">' +
 
-        '<div style="width:1px;background:var(--border);"></div>' +
+  '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;' +
+  'background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-right:none;border-radius:8px 0 0 8px;">' +
+  '<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span>' +
+  '<span style="color:#22c55e;">Confidence&nbsp;' + (confPct !== null ? confPct + "%" : "N/A") + '</span>' +
+  '</div>' +
 
-        '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;' +
-        'background:rgba(255,51,85,0.13);border:1px solid rgba(255,51,85,0.45);border-left:none;border-radius:0 8px 8px 0;">' +
-        '<span style="width:8px;height:8px;border-radius:50%;background:#ff3355;display:inline-block;"></span>' +
-        '<span style="color:#ff3355;">Error&nbsp;' + errorPct + '%</span></div></div>' +
+  '<div style="width:1px;background:var(--border);"></div>' +
 
-        '<div style="margin-top:7px;font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:0.06em;">BEST_MODEL_THAI.PKL</div>' +
-        '</div>';
+  '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;' +
+  'background:rgba(255,51,85,0.13);border:1px solid rgba(255,51,85,0.45);border-left:none;border-radius:0 8px 8px 0;">' +
+  '<span style="width:8px;height:8px;border-radius:50%;background:#ff3355;display:inline-block;"></span>' +
+  '<span style="color:#ff3355;">Error&nbsp;' + (errorPct !== null ? errorPct + "%" : "N/A") + '</span>' +
+  '</div>' +
+
+  '</div>' +
+
+  '<div style="margin-top:7px;font-family:monospace;font-size:10px;color:var(--muted);letter-spacing:0.06em;">' +
+  (confPct !== null ? 'BEST_MODEL_THAI.PKL' : 'MODEL OFFLINE') +
+  '</div>' +
+  '</div>';
 
     } catch(modelErr) {
       console.log("Model server not reachable:", modelErr.message);
