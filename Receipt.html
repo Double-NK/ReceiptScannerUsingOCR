@@ -479,6 +479,79 @@
     </div>
   </div>
 
+   <!-- Academic Credit -->
+  <div id="academicCredit" style="
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 32px;
+    margin-bottom: 28px;
+    text-align: center;
+    font-family: var(--sans);
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s, border-color 0.3s;
+  ">
+    <div style="
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #8b1a2e, #c8922a, #8b1a2e);
+    "></div>
+
+    <div style="font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 20px; letter-spacing: 0.02em;">
+      🎓 Internship Project
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 60px; flex-wrap: wrap; margin-bottom: 20px;">
+
+      <!-- Left Author -->
+      <div>
+        <div style="font-family: var(--mono); font-size: 10px; font-weight: 700; color: #c8922a; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;">Author</div>
+        <div style="font-size: 13px; color: var(--text); font-weight: 500;">Miss Nway Nway Kay Khaing</div>
+        <div style="font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px;">ID: 6531501223</div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 6px;">Department of Computer Engineering</div>
+        <div style="font-size: 11px; color: var(--muted);">School of Applied Digital Technology</div>
+      </div>
+
+      <!-- Right Author -->
+      <div>
+        <div style="font-family: var(--mono); font-size: 10px; font-weight: 700; color: #c8922a; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;">Author</div>
+        <div style="font-size: 13px; color: var(--text); font-weight: 500;">MR. TANYAWUT CHALOEMPONG</div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 600;">Institution:</div>
+        <div style="font-size: 11px; color: var(--muted);">MFU Learning Innovation Institute</div>
+        <div style="font-size: 11px; color: var(--muted);">Mae Fah Luang University, Thailand</div>
+      </div>
+
+    </div>
+
+    <!-- Divider -->
+    <div style="border-top: 1px solid var(--border); margin: 16px 0;"></div>
+
+    <!-- Advisor -->
+    <div style="margin-bottom: 14px;">
+      <div style="font-family: var(--mono); font-size: 10px; font-weight: 700; color: #c8922a; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;">Advisor</div>
+      <div style="font-size: 13px; color: var(--text); font-weight: 500;">Asst. Prof. Dr. Khwunta Kirimasthong</div>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">Center of Excellence in Artificial Intelligence and Emerging Technologies</div>
+      <div style="font-size: 11px; color: var(--muted);">School of Applied Digital Technology, Mae Fah Luang University, Thailand</div>
+    </div>
+
+    <!-- Research Project Tag -->
+    <div style="
+      display: inline-block;
+      margin-top: 4px;
+      padding: 5px 16px;
+      background: rgba(139,26,46,0.1);
+      border: 1px solid rgba(200,146,42,0.35);
+      border-radius: 20px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: #c8922a;
+      letter-spacing: 0.08em;
+    ">
+       Receipt Verification System — Internship Research Project
+    </div>
+  </div>
+
+
   <!-- Recent Activity shown before any upload -->
   <div class="recent-section" id="recentSection">
     <div class="recent-header">
@@ -1253,6 +1326,7 @@ async function processFile(file) {
   document.getElementById("dropZone").classList.add("compact");
   document.getElementById("instructionsSection").style.display = "none";
   document.getElementById("recentSection").style.display = "none";
+  document.getElementById("academicCredit").style.display = "none";
 
   // Add to recent activity
   addToRecent(file.name);
@@ -1366,7 +1440,7 @@ async function processFile(file) {
         '</div>' +
 
         // Model tag
-        '<div style="margin-top:7px; font-family:monospace; font-size:10px; color:var(--muted); letter-spacing:0.06em;">LOGISTIC REGRESSION</div>' +
+        '<div style="margin-top:7px; font-family:monospace; font-size:15px; color:var(--muted); letter-spacing:0.03em;">This receipt is verified by <strong>Gradient Boosting</strong> · Accuracy <strong>76.7%</strong></div>' +
 
         '</div>';
 
